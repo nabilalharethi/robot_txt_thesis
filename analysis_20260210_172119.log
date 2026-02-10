@@ -1,0 +1,127 @@
+2026-02-10 17:21:19,558 - INFO - ============================================================
+2026-02-10 17:21:19,558 - INFO - AI Scraping Defense Analysis v2.0 - Started
+2026-02-10 17:21:19,558 - INFO - Timestamp: 2026-02-10T17:21:19.558316
+2026-02-10 17:21:19,559 - INFO - Target file: targets.json
+2026-02-10 17:21:19,559 - INFO - ============================================================
+2026-02-10 17:21:19,559 - INFO - Loading target sites from targets.json
+2026-02-10 17:21:19,608 - INFO - Loaded 82 sites for analysis
+2026-02-10 17:21:19,612 - INFO - Processing 1/82: Dagens Nyheter
+2026-02-10 17:21:19,613 - INFO - Fetching: https://www.dn.se/robots.txt
+2026-02-10 17:21:19,693 - INFO - Classification: Tier 5: True Nuclear
+2026-02-10 17:21:20,202 - INFO - Processing 2/82: Expressen
+2026-02-10 17:21:20,203 - INFO - Fetching: https://www.expressen.se/robots.txt
+2026-02-10 17:21:20,280 - INFO - Classification: Tier 5: True Nuclear
+2026-02-10 17:21:20,782 - INFO - Processing 3/82: Sydsvenskan
+2026-02-10 17:21:20,782 - INFO - Fetching: https://www.sydsvenskan.se/robots.txt
+2026-02-10 17:21:20,863 - INFO - Classification: Tier 5: True Nuclear
+2026-02-10 17:21:21,378 - INFO - Processing 4/82: Helsingborgs Dagblad
+2026-02-10 17:21:21,378 - INFO - Fetching: https://www.hd.se/robots.txt
+2026-02-10 17:21:21,448 - INFO - Classification: Tier 5: True Nuclear
+2026-02-10 17:21:21,953 - INFO - Processing 5/82: Dagens Industri
+2026-02-10 17:21:21,953 - INFO - Fetching: https://www.di.se/robots.txt
+2026-02-10 17:21:22,017 - INFO - Classification: Tier 5: True Nuclear
+2026-02-10 17:21:22,527 - INFO - Processing 6/82: Arbetarbladet
+2026-02-10 17:21:22,527 - INFO - Fetching: https://www.arbetarbladet.se/robots.txt
+2026-02-10 17:21:23,444 - INFO - Classification: Tier 5: True Nuclear
+2026-02-10 17:21:23,955 - INFO - Processing 7/82: Gefle Dagblad
+2026-02-10 17:21:23,961 - INFO - Fetching: https://www.gd.se/robots.txt
+2026-02-10 17:21:24,095 - INFO - Classification: Tier 5: True Nuclear
+2026-02-10 17:21:24,596 - INFO - Processing 8/82: Falu Kuriren
+2026-02-10 17:21:24,596 - INFO - Fetching: https://www.falukuriren.se/robots.txt
+2026-02-10 17:21:24,700 - INFO - Classification: Tier 5: True Nuclear
+2026-02-10 17:21:25,203 - INFO - Processing 9/82: Östersunds-Posten
+2026-02-10 17:21:25,203 - INFO - Fetching: https://www.op.se/robots.txt
+2026-02-10 17:21:25,348 - INFO - Classification: Tier 5: True Nuclear
+2026-02-10 17:21:25,850 - INFO - Processing 10/82: Sundsvalls Tidning
+2026-02-10 17:21:25,850 - INFO - Fetching: https://www.st.nu/robots.txt
+2026-02-10 17:21:26,783 - INFO - Classification: Tier 5: True Nuclear
+2026-02-10 17:21:27,285 - INFO - Processing 11/82: Nerikes Allehanda
+2026-02-10 17:21:27,285 - INFO - Fetching: https://www.na.se/robots.txt
+2026-02-10 17:21:27,434 - INFO - Classification: Tier 5: True Nuclear
+2026-02-10 17:21:27,937 - INFO - Processing 12/82: VLT
+2026-02-10 17:21:27,937 - INFO - Fetching: https://www.vlt.se/robots.txt
+2026-02-10 17:21:28,833 - INFO - Classification: Tier 5: True Nuclear
+2026-02-10 17:21:29,334 - INFO - Processing 13/82: Länstidningen Södertälje
+2026-02-10 17:21:29,334 - INFO - Fetching: https://www.lt.se/robots.txt
+2026-02-10 17:21:29,442 - INFO - Classification: Tier 5: True Nuclear
+2026-02-10 17:21:29,945 - INFO - Processing 14/82: Norrtelje Tidning
+2026-02-10 17:21:29,945 - INFO - Fetching: https://www.norrteljetidning.se/robots.txt
+2026-02-10 17:21:30,052 - INFO - Classification: Tier 5: True Nuclear
+2026-02-10 17:21:30,556 - INFO - Processing 15/82: Mitti Stockholm
+2026-02-10 17:21:30,556 - INFO - Fetching: https://www.mitti.se/robots.txt
+2026-02-10 17:21:33,168 - INFO - Classification: Tier 5: True Nuclear
+2026-02-10 17:21:33,673 - INFO - Processing 16/82: Södra Dalarnes Tidning
+2026-02-10 17:21:33,673 - INFO - Fetching: https://www.sodran.se/robots.txt
+2026-02-10 17:21:34,094 - INFO - Classification: Tier 5: True Nuclear
+2026-02-10 17:21:34,608 - INFO - Processing 17/82: Mora Tidning
+2026-02-10 17:21:34,608 - INFO - Fetching: https://www.moratidning.se/robots.txt
+2026-02-10 17:21:34,727 - INFO - Classification: Tier 5: True Nuclear
+2026-02-10 17:21:35,234 - INFO - Processing 18/82: Avesta Tidning
+2026-02-10 17:21:35,234 - INFO - Fetching: https://www.avestatidning.com/robots.txt
+2026-02-10 17:21:36,172 - INFO - Classification: Tier 5: True Nuclear
+2026-02-10 17:21:36,674 - INFO - Processing 19/82: Ljusnan
+2026-02-10 17:21:36,674 - INFO - Fetching: https://www.ljusnan.se/robots.txt
+2026-02-10 17:21:36,792 - INFO - Classification: Tier 5: True Nuclear
+2026-02-10 17:21:37,297 - INFO - Processing 20/82: Söderhamns-Kuriren
+2026-02-10 17:21:37,297 - INFO - Fetching: https://www.soderhamnskuriren.se/robots.txt
+2026-02-10 17:21:38,246 - INFO - Classification: Tier 5: True Nuclear
+2026-02-10 17:21:38,755 - INFO - Processing 21/82: Hudiksvalls Tidning
+2026-02-10 17:21:38,755 - INFO - Fetching: https://www.ht.se/robots.txt
+2026-02-10 17:21:40,462 - INFO - Classification: Tier 5: True Nuclear
+2026-02-10 17:21:40,970 - INFO - Processing 22/82: Ljusdals-Posten
+2026-02-10 17:21:40,971 - INFO - Fetching: https://www.ljusdalsposten.se/robots.txt
+2026-02-10 17:21:41,906 - INFO - Classification: Tier 5: True Nuclear
+2026-02-10 17:21:42,408 - INFO - Processing 23/82: Aftonbladet
+2026-02-10 17:21:42,408 - INFO - Fetching: https://www.aftonbladet.se/robots.txt
+2026-02-10 17:21:42,588 - INFO - Classification: Tier 5: True Nuclear
+2026-02-10 17:21:43,097 - INFO - Processing 24/82: Svenska Dagbladet
+2026-02-10 17:21:43,097 - INFO - Fetching: https://www.svd.se/robots.txt
+2026-02-10 17:21:43,285 - INFO - Classification: Tier 5: True Nuclear
+2026-02-10 17:21:43,787 - INFO - Processing 25/82: Omni
+2026-02-10 17:21:43,787 - INFO - Fetching: https://www.omni.se/robots.txt
+2026-02-10 17:21:45,540 - INFO - Redirect detected: www.omni.se -> omni.se
+2026-02-10 17:21:45,540 - INFO - Classification: Tier 5: True Nuclear
+2026-02-10 17:21:46,054 - INFO - Processing 26/82: Omni Ekonomi
+2026-02-10 17:21:46,054 - INFO - Fetching: https://omniekonomi.se/robots.txt
+2026-02-10 17:21:46,181 - INFO - Classification: Tier 5: True Nuclear
+2026-02-10 17:21:46,693 - INFO - Processing 27/82: Klart.se
+2026-02-10 17:21:46,693 - INFO - Fetching: https://www.klart.se/robots.txt
+2026-02-10 17:21:46,809 - INFO - Classification: Tier 5: True Nuclear
+2026-02-10 17:21:47,310 - INFO - Processing 28/82: Tv.nu
+2026-02-10 17:21:47,310 - INFO - Fetching: https://www.tv.nu/robots.txt
+2026-02-10 17:21:48,473 - INFO - Classification: Tier 3: Surgical (Secure)
+2026-02-10 17:21:48,976 - INFO - Processing 29/82: Norrköpings Tidningar
+2026-02-10 17:21:48,976 - INFO - Fetching: https://nt.se/robots.txt
+2026-02-10 17:21:49,923 - INFO - Redirect detected: nt.se -> www.nt.se
+2026-02-10 17:21:49,925 - INFO - Classification: Tier 4a: SEO-Captive Nuclear (Vulnerable to Gemini)
+2026-02-10 17:21:50,428 - INFO - Processing 30/82: Upsala Nya Tidning
+2026-02-10 17:21:50,428 - INFO - Fetching: https://unt.se/robots.txt
+2026-02-10 17:21:50,574 - INFO - Redirect detected: unt.se -> www.unt.se
+2026-02-10 17:21:50,574 - INFO - Classification: Tier 4a: SEO-Captive Nuclear (Vulnerable to Gemini)
+2026-02-10 17:21:51,084 - INFO - Processing 31/82: Östgöta Correspondenten
+2026-02-10 17:21:51,084 - INFO - Fetching: https://corren.se/robots.txt
+2026-02-10 17:21:51,214 - INFO - Redirect detected: corren.se -> www.corren.se
+2026-02-10 17:21:51,214 - INFO - Classification: Tier 4a: SEO-Captive Nuclear (Vulnerable to Gemini)
+2026-02-10 17:21:51,732 - INFO - Processing 32/82: Norrbottens-Kuriren
+2026-02-10 17:21:51,732 - INFO - Fetching: https://kuriren.nu/robots.txt
+2026-02-10 17:21:52,701 - INFO - Redirect detected: kuriren.nu -> www.kuriren.nu
+2026-02-10 17:21:52,701 - INFO - Classification: Tier 4a: SEO-Captive Nuclear (Vulnerable to Gemini)
+2026-02-10 17:21:53,217 - INFO - Processing 33/82: Norrländska Socialdemokraten
+2026-02-10 17:21:53,217 - INFO - Fetching: https://nsd.se/robots.txt
+2026-02-10 17:21:56,586 - INFO - Redirect detected: nsd.se -> www.nsd.se
+2026-02-10 17:21:56,586 - INFO - Classification: Tier 4a: SEO-Captive Nuclear (Vulnerable to Gemini)
+2026-02-10 17:21:57,091 - INFO - Processing 34/82: Folkbladet
+2026-02-10 17:21:57,091 - INFO - Fetching: https://folkbladet.se/robots.txt
+2026-02-10 17:21:57,301 - INFO - Redirect detected: folkbladet.se -> www.folkbladet.se
+2026-02-10 17:21:57,301 - INFO - Classification: Tier 4a: SEO-Captive Nuclear (Vulnerable to Gemini)
+2026-02-10 17:21:57,804 - INFO - Processing 35/82: Motala Vadstena Tidning
+2026-02-10 17:21:57,804 - INFO - Fetching: https://mvt.se/robots.txt
+2026-02-10 17:21:57,975 - INFO - Redirect detected: mvt.se -> www.mvt.se
+2026-02-10 17:21:57,975 - INFO - Classification: Tier 4a: SEO-Captive Nuclear (Vulnerable to Gemini)
+2026-02-10 17:21:58,482 - INFO - Processing 36/82: Västerviks-Tidningen
+2026-02-10 17:21:58,482 - INFO - Fetching: https://vt.se/robots.txt
+2026-02-10 17:21:58,691 - INFO - Redirect detected: vt.se -> www.vt.se
+2026-02-10 17:21:58,691 - INFO - Classification: Tier 4a: SEO-Captive Nuclear (Vulnerable to Gemini)
+2026-02-10 17:21:59,197 - INFO - Processing 37/82: Hela Gotland
+2026-02-10 17:21:59,197 - INFO - Fetching: https://helagotland.se/robots.txt
+2026-02-10 17:22:00,019 - WARNING - Analysis interrupted by user (Ctrl+C)
