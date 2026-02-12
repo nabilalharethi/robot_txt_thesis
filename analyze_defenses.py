@@ -29,7 +29,7 @@ USER_AGENT = f"Student-Thesis-Bot/{VERSION} (Academic Research)"
 
 # Input/Output file paths
 TARGETS_FILE = "targets.json"  # Sites to analyze
-OUTPUT_CSV = "raw_results.csv"  # Raw data export
+OUTPUT_CSV = "log/raw_results.csv"  # Raw data export
 LOG_FILE = f"log/analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"  # Timestamped log
 
 # Network configuration
