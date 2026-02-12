@@ -30,8 +30,8 @@ from pathlib import Path  # For file checking
 TARGETS_FILE = "targets.json"
 
 # Output
-OUTPUT_CSV = "temporal_results.csv"
-TIMELINE_CHART = "temporal_timeline.png"
+OUTPUT_CSV = "log/temporal_results.csv"
+TIMELINE_CHART = "log/temporal_timeline.png"
 
 # Wayback Machine settings
 WAYBACK_API = "https://archive.org/wayback/available"

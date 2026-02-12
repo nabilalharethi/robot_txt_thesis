@@ -20,11 +20,11 @@ from pathlib import Path  # For file checking
 # =============================================================================
 
 # Input file
-INPUT_CSV = "raw_results.csv"
+INPUT_CSV = "log/raw_results.csv"
 
 # Output files
-PIE_CHART_FILE = "thesis_pie_chart.png"
-HEATMAP_FILE = "thesis_heatmap.png"
+PIE_CHART_FILE = "log/thesis_pie_chart.png"
+HEATMAP_FILE = "log/thesis_heatmap.png"
 
 # Visualization settings
 DPI = 300  # High resolution for thesis printing

@@ -12,6 +12,7 @@
 *.env
 *.log
 *.csv
+*.png
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
