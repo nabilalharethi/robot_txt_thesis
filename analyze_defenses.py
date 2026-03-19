@@ -574,10 +574,10 @@ def main():
     # Step 7: Display completion message
     print(f"\n Analysis complete! Results saved to: {OUTPUT_CSV}")
     print(f"Log file: {LOG_FILE}")
-    
+
     # Step 8: Display summary statistics
     print_summary_statistics(df)
-    
+
     logger.info("Analysis pipeline completed successfully")
 
 # =============================================================================

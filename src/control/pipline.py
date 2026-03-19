@@ -1,24 +1,19 @@
-
-import logging
 import time
 from pathlib import Path
 
 from src.model import scraper
-from src.model import classifier
+from src.model import classifier as classifier
 from src.model import conflict_detector
 from src.model import compliance
 from src.model import result_builder as rb
-from src.view  import cmd_view as view
-
-logger = logging.getLogger(__name__)
+from src.view import cmd_view as view
 
 
-
-def _save_evidence(site, strategy_display, content, evidence_dir="evidence"):
+def _save_evidence(site, strategy_display, content, logger, evidence_dir="evidence"):
 
     Path(evidence_dir).mkdir(parents=True, exist_ok=True)
     safe_name = site["name"].replace(" ", "_").replace("/", "_")
-    filename  = f"{evidence_dir}/evidence_{safe_name}.txt"
+    filename = f"{evidence_dir}/evidence_{safe_name}.txt"
 
     try:
         with open(filename, "w", encoding="utf-8") as f:
@@ -35,8 +30,7 @@ def _save_evidence(site, strategy_display, content, evidence_dir="evidence"):
         logger.warning(f"Could not save evidence for {site['name']}: {e}")
 
 
-
-def process_site(site, site_number, total_sites):
+def process_site(site, site_number, total_sites, logger):
 
     logger.info(
         f"[{site_number}/{total_sites}] Analyzing: {site['name']} ({site['url']})"
@@ -68,29 +62,31 @@ def process_site(site, site_number, total_sites):
     # ------------------------------------------------------------------
     # Step 3: Run SCA classification (RQ1)
     # ------------------------------------------------------------------
-    classification = classifier.classify(content)
+    classification = classifier.classify(content, logger)
 
     # ------------------------------------------------------------------
     # Step 4: Detect directive conflicts (RQ2)
     # ------------------------------------------------------------------
-    conflict = conflict_detector.detect_conflicts(content)
+    # conflict = conflict_detector.detect_conflicts(content)
 
     # ------------------------------------------------------------------
     # Step 5: Analyze EU AI Act compliance (RQ3)
     # ------------------------------------------------------------------
-    comp = compliance.analyze_compliance(content, classification, conflict)
+    # comp = compliance.analyze_compliance(content, classification, conflict)
 
     # ------------------------------------------------------------------
     # Step 6: Build structured result
     # ------------------------------------------------------------------
-    result = rb.build_success_result(
-        site = site,
-        classification = classification,
-        conflict = conflict,
-        compliance = comp,
-        redirected = redirected,
-        redirect_info = redirect_info,
-    )
+    # result = rb.build_success_result(
+    #    site = site,
+    #    classification = classification,
+    #    conflict = conflict,
+    #    compliance = comp,
+    #    redirected = redirected,
+    #    redirect_info = redirect_info,
+    #)
+
+    result = rb.build_success_result(site, classification, redirected, redirect_info)
 
     # ------------------------------------------------------------------
     # Step 7: Display result row in terminal
@@ -99,30 +95,31 @@ def process_site(site, site_number, total_sites):
         f"→ {redirect_info}" if redirected else "NO"
     )
 
+    print(classification)
+
     view.print_table_row(
         name=site["name"],
         country=site.get("country", "??"),
         group=site["group"],
-        strategy=classification["display"],
-        compliance_status=comp["status"],
-        conflict_count=conflict.get("conflict_count",
-        conflict.get("total", 0)),
+        strategy=classification,  # ["display"],
+        #compliance_status=comp["status"],
+        #conflict_count=conflict.get("conflict_count",
+        #conflict.get("total", 0)),
         redirect_info=redirect_display,
     )
 
     # ------------------------------------------------------------------
     # Step 8: Save evidence for Tier 4a (SEO-Captive) sites
     # ------------------------------------------------------------------
-    if classification["tier"] == "Tier 4a":
-        _save_evidence(site, classification["display"], content)
+    if classification == "Tier 4a":
+        _save_evidence(site, classification["display"], content, logger)
 
     return result
 
 
+def run_pipeline(sites, logger, rate_limit_delay=0.5):
 
-def run_pipeline(sites, rate_limit_delay=0.5):
-
-    results     = []
+    results = []
     total_sites = len(sites)
 
     logger.info(f"Starting pipeline: {total_sites} sites | "
@@ -131,14 +128,14 @@ def run_pipeline(sites, rate_limit_delay=0.5):
     view.print_table_header()
 
     for i, site in enumerate(sites, start=1):
-        result = process_site(site, i, total_sites)
+        result = process_site(site, i, total_sites, logger)
         results.append(result)
         time.sleep(rate_limit_delay)
 
     view.print_table_footer()
 
     success_count = sum(1 for r in results if r["strategy"] != "ERROR")
-    error_count   = sum(1 for r in results if r["strategy"] == "ERROR")
+    error_count = sum(1 for r in results if r["strategy"] == "ERROR")
 
     logger.info(
         f"Pipeline complete: {success_count} success, "

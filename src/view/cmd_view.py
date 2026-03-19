@@ -27,12 +27,12 @@ def print_table_header():
     print(separator)
 
 
-def print_table_row(name, group, strategy, redirect_info):
+def print_table_row(name, country, group, strategy, redirect_info):
     """
     Print a single formatted table row.
     Uses zip() to map values to their column config dynamically.
     """
-    values = [name, group, strategy, redirect_info]
+    values = [name, country, group, strategy, redirect_info]
     cols = TABLE_CONFIG['columns']
 
     # Format each value according to its corresponding column width
