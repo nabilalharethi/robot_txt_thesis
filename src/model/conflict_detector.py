@@ -191,7 +191,7 @@ def _detect_empty_disallow_conflict(sections):
 
 
 def detect_conflicts(content):
-    lines    = content.lower().splitlines()
+    lines = content.lower().splitlines()
     sections = _parse_raw_sections(lines)
 
     all_conflicts = []

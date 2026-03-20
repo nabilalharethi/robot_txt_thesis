@@ -52,11 +52,11 @@ def print_summary_statistics(df):
     print(f"\n{_sep()}")
     print("ANALYSIS SUMMARY")
     print(_sep())
- 
+
     total = len(df)
     errors = len(df[df["strategy"] == "ERROR"])
     valid = total - errors
- 
+
     print(f"\n  Total sites   : {total}")
     print(f"  Valid results : {valid}  ({valid/total*100:.1f}%)")
     if errors:
@@ -66,7 +66,7 @@ def print_summary_statistics(df):
     if len(valid_df) == 0:
         print(_sep())
         return
- 
+
     # Tier distribution
     print(f"\n  {'─'*58}")
     print("  DEFENSE TIER DISTRIBUTION  (RQ1)")
@@ -76,7 +76,7 @@ def print_summary_statistics(df):
         pct = n / len(valid_df) * 100
         bar = "█" * int(pct / 2)
         print(f"  {tier:<8} {n:>3} ({pct:>5.1f}%)  {bar}")
- 
+
     # Conflict summary (RQ2)
     if "has_conflicts" in valid_df.columns:
         print(f"\n  {'─'*58}")

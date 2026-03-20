@@ -16,6 +16,7 @@ from pathlib import Path
 from src.model import data
 from src.model import compliance as comp_model
 from src.view import cmd_view as view
+from src.view import vizualization
 from src.control import pipeline
 
 #config
@@ -81,20 +82,9 @@ def main():
     print("\n" + "=" * 60)
     print("  Generating thesis figures ...")
     print("=" * 60)
- 
-    try:
-        import visualize as viz
-        viz.run_from_results(results, metrics)
-        print(f"\n  Figures  -> figures/")
-        print(f"  Results  -> results/")
-    except ImportError:
-        logger.warning(
-            "visualize.py not found — skipping figures. "
-            "Place visualize.py in the project root to enable."
-        )
-    except Exception as e:
-        logger.error(f"Figure generation failed: {e}", exc_info=True)
- 
+    vizualization.run_from_results(results, metrics)
+    print("\n  Figures  -> figures/")
+    print("  Results  -> results/")
     logger.info("Pipeline completed successfully")
     print("\n  Done.\n")
  
