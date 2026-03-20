@@ -1,0 +1,230 @@
+Site    : La Razón
+URL     : https://www.larazon.es
+Country : ES
+Group   : Independent ES
+Strategy: Tier 4a: SEO-Captive Nuclear
+Finding : SEO-Captive — Vulnerable to Gemini training
+============================================================
+# robots larazon
+user-agent: *
+user-agent: googlebot
+user-agent: googlebot-news
+user-agent: googlebot-image
+user-agent: googlebot-video
+disallow: /buscador/
+disallow: /json/analytics/
+disallow: /pf/*.html
+allow: /pf/*.css
+allow: /pf/*.js
+disallow: /json/video/
+disallow: /resizer/
+disallow: /*=$
+
+user-agent: amazonadbot
+allow: /
+
+# agentes nocivos
+user-agent: baiduspider
+disallow: /
+user-agent: yandex
+disallow: /
+user-agent: 008
+disallow: /
+user-agent: unisterbot
+disallow: /
+user-agent: jikespider
+disallow: /
+user-agent: zealbot
+disallow: / 
+
+# agentes bloqueados por idioma
+user-agent: msiecrawler
+disallow: /
+user-agent: sitesnagger
+disallow: /
+user-agent: webstripper
+disallow: /
+user-agent: webcopier
+disallow: /
+user-agent: fetch
+disallow: /
+user-agent: offline explorer
+disallow: /
+user-agent: teleport
+disallow: /
+user-agent: teleportpro
+disallow: /
+user-agent: webzip
+disallow: /
+user-agent: linko
+disallow: /
+user-agent: httrack
+disallow: /
+user-agent: larbin
+disallow: /
+user-agent: libwww
+disallow: /
+user-agent: zyborg
+disallow: /
+user-agent: ubicrawler
+disallow: /
+user-agent: doc
+disallow: /
+user-agent: zao
+disallow: /
+user-agent: sitecheck.internetseer.com
+disallow: /
+user-agent: zealbot
+disallow: /
+user-agent: download ninja
+disallow: /
+user-agent: maxthon
+disallow: /
+user-agent: cncdialer
+disallow: /
+user-agent: wget
+disallow: /
+user-agent: grub-client
+disallow: /
+user-agent: k2spider
+disallow: /
+user-agent: npbot
+disallow: /
+user-agent: webreaper
+disallow: /
+user-agent: turnitinbot
+disallow: /
+user-agent: mj12bot
+disallow: /
+user-agent: magpie-crawler
+disallow: /
+user-agent: flamingo_searchengine
+disallow: /
+user-agent: exabot
+disallow: /
+user-agent: moreoverbot
+disallow: /
+user-agent: cyberalert
+disallow: /
+user-agent: newscan
+disallow: /
+user-agent: spinn3r
+disallow: /
+user-agent: lexxebot/1.0
+disallow: /
+user-agent: nextgensearchbot
+disallow: /
+user-agent: sosospider
+disallow: /
+user-agent: rogerbot
+disallow: /
+user-agent: sitebot/0.1
+disallow: /
+user-agent: sitebot
+disallow: /
+user-agent: crystalsemanticsbot
+disallow: /
+user-agent: netseer crawler
+disallow: /
+user-agent: trovitbot
+disallow: /
+user-agent: dotbot
+disallow: /
+user-agent: ezooms
+disallow: /
+user-agent: discobot
+disallow: /
+user-agent: jyxobot
+disallow: /
+user-agent: sogou
+disallow: /
+user-agent: heritrix
+disallow: /
+user-agent: nerdbynature.bot
+disallow: /
+user-agent: psbot
+disallow: /
+user-agent: wbsearchbot
+disallow: /
+user-agent: http://addthis.com/ 
+disallow: /
+user-agent: discoverybot
+disallow: /
+user-agent: bl.uk_lddc_bot
+disallow: /
+user-agent: istellabot
+disallow: /
+user-agent: seokicks
+disallow: /
+user-agent: bender
+disallow: /
+user-agent: wotbox
+disallow: /
+user-agent: yasni
+disallow: /
+user-agent: netestate ne crawler
+disallow: /
+user-agent: pixray-seeker
+disallow: /
+user-agent: integromedb
+disallow: /
+user-agent: blexbot
+disallow: /
+user-agent: bdcbot
+disallow: /
+user-agent: wesee:search
+disallow: /
+user-agent: admantx
+disallow: /
+user-agent: spbot
+disallow: /
+user-agent: bubing
+disallow: /
+
+#ai data scrappers
+user-agent: anthropic-ai
+disallow: /
+user-agent: ai2bot
+disallow: /
+user-agent: applebot-extended
+disallow: /
+user-agent: bytespider
+disallow: /
+user-agent: ccbot
+disallow: /
+user-agent: claudebot
+disallow: /
+user-agent: cohere-training-data-crawler
+disallow: /
+user-agent: cotoyogi
+disallow: /
+user-agent: datenbank crawler
+disallow: /
+user-agent: diffbot
+disallow: /
+user-agent: facebookbot
+disallow: /
+user-agent: factset_spyderbot
+disallow: /
+user-agent: gptbot
+disallow: /
+user-agent: icc-crawler
+disallow: /
+user-agent: kangaroo bot
+disallow: /
+user-agent: meta-externalagent
+disallow: /
+user-agent: netestate imprint crawler
+disallow: /
+user-agent: omgili
+disallow: /
+user-agent: omgilibot
+disallow: /
+user-agent: pangubot
+disallow: /
+user-agent: semrushbot-ocob
+disallow: /
+user-agent: timpibot
+disallow: /
+user-agent: webzio-extended
+disallow: /

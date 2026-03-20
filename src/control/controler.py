@@ -1,4 +1,4 @@
-from src.control import pipline as app
+from control import pipeline as app
 from src.model import data
 import logging
 

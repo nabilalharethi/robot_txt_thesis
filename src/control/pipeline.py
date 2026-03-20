@@ -62,57 +62,52 @@ def process_site(site, site_number, total_sites, logger):
     # ------------------------------------------------------------------
     # Step 3: Run SCA classification (RQ1)
     # ------------------------------------------------------------------
-    classification = classifier.classify(content, logger)
+    result_cls = classifier.classify(content)
 
     # ------------------------------------------------------------------
     # Step 4: Detect directive conflicts (RQ2)
     # ------------------------------------------------------------------
-    # conflict = conflict_detector.detect_conflicts(content)
+    cf1 = conflict_detector.detect_conflicts(content)
 
     # ------------------------------------------------------------------
     # Step 5: Analyze EU AI Act compliance (RQ3)
     # ------------------------------------------------------------------
-    # comp = compliance.analyze_compliance(content, classification, conflict)
+    comp = compliance.analyze_compliance(content, result_cls, cf1)
 
     # ------------------------------------------------------------------
     # Step 6: Build structured result
-    # ------------------------------------------------------------------
-    # result = rb.build_success_result(
-    #    site = site,
-    #    classification = classification,
-    #    conflict = conflict,
-    #    compliance = comp,
-    #    redirected = redirected,
-    #    redirect_info = redirect_info,
-    #)
+    # -----------------------------------------------------------------
 
-    result = rb.build_success_result(site, classification, redirected, redirect_info)
+    result = rb.build_success_result(
+    site=site,
+    classification=result_cls,
+    conflict=cf1,
+    compliance=comp,
+    redirected=redirected,
+    redirect_info=redirect_info,
+)
 
     # ------------------------------------------------------------------
     # Step 7: Display result row in terminal
     # ------------------------------------------------------------------
-    redirect_display = (
-        f"→ {redirect_info}" if redirected else "NO"
-    )
 
-    print(classification)
+    print(result_cls)
 
     view.print_table_row(
         name=site["name"],
         country=site.get("country", "??"),
         group=site["group"],
-        strategy=classification,  # ["display"],
-        #compliance_status=comp["status"],
-        #conflict_count=conflict.get("conflict_count",
-        #conflict.get("total", 0)),
-        redirect_info=redirect_display,
+        strategy=result_cls["display"],
+        compliance_status=comp["status"],
+        conflict_count=cf1.get("conflict_count", 0),
+        redirect_info=f"→ {redirect_info}" if redirected else "NO",
     )
 
     # ------------------------------------------------------------------
     # Step 8: Save evidence for Tier 4a (SEO-Captive) sites
     # ------------------------------------------------------------------
-    if classification == "Tier 4a":
-        _save_evidence(site, classification["display"], content, logger)
+    if result_cls["tier"] == "Tier 4a":
+        _save_evidence(site, result_cls["display"], content, logger)
 
     return result
 

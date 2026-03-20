@@ -55,9 +55,9 @@ def fetch_robots_txt(url):
         redirect_info = None
 
         if response.history:
-            final_domain    = response.url.split("/")[2]
+            final_domain = response.url.split("/")[2]
             original_domain = url.split("/")[2]
-            is_redirected   = final_domain != original_domain
+            is_redirected = final_domain != original_domain
 
             if is_redirected:
                 redirect_info = final_domain
