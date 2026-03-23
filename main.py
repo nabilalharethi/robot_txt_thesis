@@ -21,6 +21,7 @@ from src.control import pipeline
 
 #config
 
+
 Version = "1.0"
 Targets = "targets.json"
 Output = "log/raw_results.csv"
@@ -31,7 +32,7 @@ Log_File = Log_Dir / f"analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
 # LOGGING SETUP
 
 Log_Dir.mkdir(parents=True, exist_ok=True)
- 
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s — %(levelname)s — %(name)s — %(message)s",
@@ -43,6 +44,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # MAIN
+
 
 def main():
     logger.info("=" * 60)

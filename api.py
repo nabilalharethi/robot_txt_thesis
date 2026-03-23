@@ -18,7 +18,7 @@ from src.model import data as data_model
 from src.model import compliance as comp_model
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-WEB_DIR  = os.path.join(BASE_DIR, "src", "view", "web_view")
+WEB_DIR = os.path.join(BASE_DIR, "src", "view", "web_view")
 
 app = Flask(__name__, static_folder=WEB_DIR, static_url_path="")
 CORS(app)
@@ -41,8 +41,8 @@ def _analyze_url(url: str, name: str = "", group: str = "Manual") -> dict:
     if content is None:
         return rb.build_error_result(site, redirect_info or "UNKNOWN_ERROR")
     result_cls = classifier.classify(content)
-    cf1        = conflict_detector.detect_conflicts(content)
-    comp_res   = compliance.analyze_compliance(content, result_cls, cf1)
+    cf1 = conflict_detector.detect_conflicts(content)
+    comp_res = compliance.analyze_compliance(content, result_cls, cf1)
     return rb.build_success_result(
         site=site, classification=result_cls, conflict=cf1,
         compliance=comp_res, redirected=redirected, redirect_info=redirect_info,
@@ -58,7 +58,8 @@ def _serialize(result: dict) -> dict:
             out[k] = _serialize(v)
         else:
             try:
-                import json; json.dumps(v)
+                import json
+                json.dumps(v)
                 out[k] = v
             except TypeError:
                 out[k] = str(v)
@@ -67,9 +68,9 @@ def _serialize(result: dict) -> dict:
 
 @app.route("/analyze", methods=["POST"])
 def analyze_single():
-    body  = request.get_json(force=True) or {}
-    url   = (body.get("url") or "").strip()
-    name  = (body.get("name") or "").strip()
+    body = request.get_json(force=True) or {}
+    url = (body.get("url") or "").strip()
+    name = (body.get("name") or "").strip()
     group = (body.get("group") or "Manual").strip()
     if not url:
         return jsonify({"error": "url is required"}), 400
@@ -85,7 +86,7 @@ def analyze_single():
 @app.route("/analyze-batch", methods=["POST"])
 def analyze_batch():
     global _last_batch_results
-    body         = request.get_json(force=True) or {}
+    body = request.get_json(force=True) or {}
     targets_file = body.get("targets_file", "targets.json")
     sites = data_model.load_target_sites(logger, targets_file)
     if not sites:
