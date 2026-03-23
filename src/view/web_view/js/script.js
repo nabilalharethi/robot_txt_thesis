@@ -82,6 +82,16 @@ function renderResultCard(r){
     ${m.txt?`<div class="meaning-box ${m.cls}"><h4>What this means</h4><p>${m.txt}</p></div>`:''}
     ${(r.conflict_count||0)>0?`<div class="conflicts-list"><div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin:16px 0 8px;letter-spacing:.06em">CONFLICTS (${r.conflict_count})</div>${conflicts}${(r.conflicts||[]).length>8?`<div style="font-size:11px;color:var(--muted);text-align:center;padding:8px">... and ${r.conflicts.length-8} more</div>`:''}</div>`:'<div style="margin-top:14px;font-size:12px;color:var(--accent);font-family:var(--mono)">&#10003; No directive conflicts detected</div>'}
     <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);font-family:var(--mono)">${r.eu_ai_act_ref||r.compliance?.eu_ai_act_ref||'EU AI Act Recital 105 / Article 53(1)(c)'}</div>
+${r.raw_content ? `
+    <div style="margin-top:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:.08em;text-transform:uppercase">robots.txt — raw content</div>
+        <button onclick="var b=document.getElementById('raw-body');var expanded=b.style.display==='block';b.style.display=expanded?'none':'block';this.textContent=expanded?'▼ expand':'▲ collapse';" style="font-size:10px;font-family:var(--mono);color:var(--muted);background:none;border:none;cursor:pointer;padding:0">▼ expand</button>
+      </div>
+      <div id="raw-body" style="display:none;background:#FEFEFE;border:1px solid var(--border);border-radius:6px;overflow:auto;max-height:380px">
+        <pre style="margin:0;padding:0;font-family:var(--mono);font-size:11px;line-height:1.8">${highlightRobotsLine(r.raw_content, r.conflicts||[], r.line_map||{})}</pre>
+      </div>
+    </div>` : ''}
   </div>`;
 }
 
@@ -95,40 +105,14 @@ async function runBatchAnalysis(){
     if(data.error)throw new Error(data.error);
     _allResults=data.results||[];
     renderTable(_allResults);
-    renderDashboard(_allResults,data.metrics||{});
+    renderThesisCharts(_allResults);
   }catch(e){alert('Batch error: '+e.message);}
   finally{btn.disabled=false;spin.style.display='none';}
 }
 
-function loadDemoData(){
-  const M={total_sites:81,compliant:69,partial:0,nominal:2,non_compliant:10,compliance_gap:12,gap_percentage:14.81,intended_rate:87.65,effective_rate:85.19,enumeration_fallacy_count:2};
-  const R=[
-    {name:'Dagens Nyheter',group:'Bonnier',country:'SE',strategy_tier:'Tier 3',compliance_status:'COMPLIANT',compliance_score:1.0,conflict_count:1,tier_label:'Surgical'},
-    {name:'Expressen',group:'Bonnier',country:'SE',strategy_tier:'Tier 3',compliance_status:'COMPLIANT',compliance_score:1.0,conflict_count:0,tier_label:'Surgical'},
-    {name:'Helsingborgs Dagblad',group:'Bonnier',country:'SE',strategy_tier:'Tier 5',compliance_status:'COMPLIANT',compliance_score:1.0,conflict_count:0,tier_label:'True Nuclear'},
-    {name:'Mitti Stockholm',group:'Bonnier',country:'SE',strategy_tier:'Tier 1',compliance_status:'NON_COMPLIANT',compliance_score:0.0,conflict_count:0,tier_label:'Open'},
-    {name:'Aftonbladet',group:'Schibsted',country:'SE',strategy_tier:'Tier 5',compliance_status:'NOMINAL',compliance_score:0.0,conflict_count:35,tier_label:'True Nuclear'},
-    {name:'Svenska Dagbladet',group:'Schibsted',country:'SE',strategy_tier:'Tier 5',compliance_status:'NOMINAL',compliance_score:0.0,conflict_count:35,tier_label:'True Nuclear'},
-    {name:'Omni',group:'Schibsted',country:'SE',strategy_tier:'Tier 1',compliance_status:'NON_COMPLIANT',compliance_score:0.0,conflict_count:0,tier_label:'Open'},
-    {name:'Klart.se',group:'Schibsted',country:'SE',strategy_tier:'Tier 1',compliance_status:'NON_COMPLIANT',compliance_score:0.0,conflict_count:0,tier_label:'Open'},
-    {name:'Tv.nu',group:'Schibsted',country:'SE',strategy_tier:'Tier 3',compliance_status:'COMPLIANT',compliance_score:1.0,conflict_count:0,tier_label:'Surgical'},
-    {name:'Norrköpings Tidningar',group:'NTM',country:'SE',strategy_tier:'Tier 4b',compliance_status:'COMPLIANT',compliance_score:1.0,conflict_count:24,tier_label:'Secured Nuclear'},
-    {name:'Upsala Nya Tidning',group:'NTM',country:'SE',strategy_tier:'Tier 4b',compliance_status:'COMPLIANT',compliance_score:1.0,conflict_count:24,tier_label:'Secured Nuclear'},
-    {name:'Göteborgs-Posten',group:'Stampen',country:'SE',strategy_tier:'Tier 5',compliance_status:'COMPLIANT',compliance_score:1.0,conflict_count:0,tier_label:'True Nuclear'},
-    {name:'Jönköpings-Posten',group:'Hall Media',country:'SE',strategy_tier:'Tier 5',compliance_status:'COMPLIANT',compliance_score:1.0,conflict_count:0,tier_label:'True Nuclear'},
-    {name:'SVT Nyheter',group:'Public Service',country:'SE',strategy_tier:'Tier 3',compliance_status:'COMPLIANT',compliance_score:1.0,conflict_count:0,tier_label:'Surgical'},
-    {name:'Sveriges Radio',group:'Public Service',country:'SE',strategy_tier:'Tier 3',compliance_status:'COMPLIANT',compliance_score:1.0,conflict_count:0,tier_label:'Surgical'},
-    {name:'UR',group:'Public Service',country:'SE',strategy_tier:'Tier 1',compliance_status:'NON_COMPLIANT',compliance_score:0.0,conflict_count:0,tier_label:'Open'},
-    {name:'Dagens ETC',group:'Independent',country:'SE',strategy_tier:'Tier 1',compliance_status:'NON_COMPLIANT',compliance_score:0.0,conflict_count:0,tier_label:'Open'},
-    {name:'Samnytt',group:'Independent',country:'SE',strategy_tier:'Tier 1',compliance_status:'NON_COMPLIANT',compliance_score:0.0,conflict_count:0,tier_label:'Open'},
-    {name:'Norra Skane',group:'Independent',country:'SE',strategy_tier:'Tier 3',compliance_status:'COMPLIANT',compliance_score:1.0,conflict_count:0,tier_label:'Surgical'},
-  ];
-  _allResults=R;renderTable(R);renderDashboard(R,M);
-}
+
 
 function renderTable(results){
-  document.getElementById('results-empty').style.display='none';
-  document.getElementById('results-table-wrap').style.display='block';
   document.getElementById('table-count').textContent=results.filter(r=>r.strategy!=='ERROR').length;
   fillTable(results);
 }
@@ -140,10 +124,10 @@ function fillTable(results){
     const tr=document.createElement('tr');
     tr.onclick=()=>openDetail(r);
     const tier=r.strategy_tier||'';
-    const tc=tier==='Tier 5'?'tp5':tier==='Tier 4b'?'tp4b':tier==='Tier 3'?'tp3':'tp1';
+    const tc=tier==='Tier 5'?'tp5':tier==='Tier 4b'?'tp4b':tier==='Tier 4a'?'tp4a':tier==='Tier 3'?'tp3':tier==='Tier 2'?'tp2':'tp1';
     const cs=(r.compliance_status||'').toLowerCase();
     const score=Math.round((r.compliance_score||0)*100);
-    tr.innerHTML=`<td class="name-col">${r.name}</td><td>${r.group||'--'}</td><td>${r.country||'--'}</td><td><span class="tier-pill ${tc}">${tier}</span></td><td><span class="badge badge-${cs}" style="font-size:10px">${r.compliance_status||'--'}</span></td><td style="color:${(r.conflict_count||0)>0?'var(--warn)':'var(--muted)'}">${r.conflict_count??'--'}</td><td style="color:${score>=80?'var(--accent)':score>0?'var(--warn)':'var(--danger)'}">${score}%</td>`;
+    tr.innerHTML=`<td class="name-col">${r.name||r.url}</td><td>${r.group||'--'}</td><td>${r.country||'--'}</td><td><span class="tier-pill ${tc}">${tier}</span></td><td><span class="badge badge-${cs}" style="font-size:10px">${r.compliance_status||'--'}</span></td><td style="color:${(r.conflict_count||0)>0?'var(--warn)':'var(--muted)'}">${r.conflict_count??'--'}</td><td style="color:${score>=80?'var(--accent)':score>0?'var(--warn)':'var(--danger)'}">${score}%</td>`;
     tbody.appendChild(tr);
   });
 }
@@ -155,36 +139,200 @@ function filterTable(){
 function openDetail(r){document.getElementById('detail-content').innerHTML=renderResultCard(r);document.getElementById('detail-overlay').classList.add('open');}
 function closeDetail(){document.getElementById('detail-overlay').classList.remove('open');}
 
-function renderDashboard(results,m){
-  document.getElementById('dashboard-empty').style.display='none';
-  document.getElementById('dashboard-content').style.display='block';
-  const total=m.total_sites||results.length;
-  const cp=total?Math.round((m.compliant/total)*100):0;
-  document.getElementById('metrics-row').innerHTML=`
-    <div class="metric-card"><div class="m-label">Sites analyzed</div><div class="m-value">${total}</div></div>
-    <div class="metric-card"><div class="m-label">Compliant</div><div class="m-value" style="color:var(--accent)">${cp}%</div><div class="m-sub">${m.compliant||0} / ${total}</div></div>
-    <div class="metric-card"><div class="m-label">Compliance gap</div><div class="m-value" style="color:var(--danger)">${(m.gap_percentage||0).toFixed(1)}%</div><div class="m-sub">${m.compliance_gap||0} sites</div></div>
-    <div class="metric-card"><div class="m-label">Enum. Fallacy</div><div class="m-value" style="color:var(--warn)">${m.enumeration_fallacy_count||0}</div><div class="m-sub">NOMINAL sites</div></div>`;
-  const gc='rgba(255,255,255,0.05)';const tc='#6b7570';
-  const tierC={};results.forEach(r=>{if(r.strategy_tier&&r.strategy_tier!=='ERROR')tierC[r.strategy_tier]=(tierC[r.strategy_tier]||0)+1;});
-  const tclr={'Tier 5':'#ff5c5c','Tier 4b':'#4da6ff','Tier 4a':'#8338ec','Tier 3':'#00e5a0','Tier 2':'#fb8500','Tier 1':'#6b7570'};
-  if(_charts.tier)_charts.tier.destroy();
-  _charts.tier=new Chart(document.getElementById('chart-tier'),{type:'doughnut',data:{labels:Object.keys(tierC),datasets:[{data:Object.values(tierC),backgroundColor:Object.keys(tierC).map(t=>tclr[t]||'#444'),borderWidth:2,borderColor:'#0d0f0e'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
-  const grps={};results.forEach(r=>{if(!r.group)return;if(!grps[r.group])grps[r.group]={c:0,n:0,nc:0};if(r.compliance_status==='COMPLIANT')grps[r.group].c++;else if(r.compliance_status==='NOMINAL')grps[r.group].n++;else if(r.compliance_status==='NON_COMPLIANT')grps[r.group].nc++;});
-  const gl=Object.keys(grps);
-  if(_charts.group)_charts.group.destroy();
-  _charts.group=new Chart(document.getElementById('chart-group'),{type:'bar',data:{labels:gl,datasets:[{label:'Compliant',data:gl.map(g=>grps[g].c),backgroundColor:'#00e5a0'},{label:'Nominal',data:gl.map(g=>grps[g].n),backgroundColor:'#ffb547'},{label:'Non-compliant',data:gl.map(g=>grps[g].nc),backgroundColor:'#ff5c5c'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,ticks:{color:tc,font:{size:10}},grid:{color:gc}},y:{stacked:true,ticks:{color:tc},grid:{color:gc}}}}});
-  if(_charts.comp)_charts.comp.destroy();
-  _charts.comp=new Chart(document.getElementById('chart-compliance'),{type:'doughnut',data:{labels:['Compliant','Nominal','Non-compliant'],datasets:[{data:[m.compliant||69,m.nominal||2,m.non_compliant||10],backgroundColor:['#00e5a0','#ffb547','#ff5c5c'],borderWidth:2,borderColor:'#0d0f0e'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
-  if(_charts.intent)_charts.intent.destroy();
-  _charts.intent=new Chart(document.getElementById('chart-intent'),{type:'bar',data:{labels:['Intended opt-out','Effective opt-out'],datasets:[{data:[m.intended_rate||87.65,m.effective_rate||85.19],backgroundColor:['#4da6ff','#00e5a0'],borderRadius:4,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{max:100,ticks:{color:tc,callback:v=>v+'%'},grid:{color:gc}},y:{ticks:{color:tc,font:{size:11}},grid:{display:false}}}}});
+
+function renderThesisCharts(results) {
+  const valid = results.filter(r => r.strategy !== 'ERROR');
+  const total = valid.length;
+  if (!total) return;
+
+  // ── RQ1: Tier distribution ──────────────────────────────────────────
+  const tierCounts = {};
+  valid.forEach(r => {
+    const t = r.strategy_tier || 'Unknown';
+    tierCounts[t] = (tierCounts[t] || 0) + 1;
+  });
+  const tierColors = {
+    'Tier 5': '#ff5c5c', 'Tier 4b': '#4da6ff', 'Tier 4a': '#8338ec',
+    'Tier 3': '#00e5a0', 'Tier 2': '#fb8500',  'Tier 1': '#6b7570'
+  };
+  const tierLabels = Object.keys(tierCounts);
+  const tierData   = tierLabels.map(t => tierCounts[t]);
+  const tierBg     = tierLabels.map(t => tierColors[t] || '#aaa');
+
+  if (_charts.thesisTier) _charts.thesisTier.destroy();
+  _charts.thesisTier = new Chart(document.getElementById('thesis-tier'), {
+    type: 'bar',
+    data: {
+      labels: tierLabels.map(t => {
+        const labels = {'Tier 5':'True Nuclear','Tier 4b':'Secured Nuclear',
+                        'Tier 4a':'SEO-Captive','Tier 3':'Surgical',
+                        'Tier 2':'Porous','Tier 1':'Open'};
+        return `${t} — ${labels[t]||''}`;
+      }),
+      datasets: [{ data: tierData, backgroundColor: tierBg, borderRadius: 4, borderWidth: 0 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#6b7280', font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.05)' } },
+        y: { ticks: { color: '#374151', font: { size: 12 } }, grid: { display: false } }
+      }
+    }
+  });
+
+  // ── RQ2: Conflict severity ──────────────────────────────────────────
+  // Show top sites with conflicts
+  const conflicted = valid
+    .filter(r => (r.conflict_count || 0) > 0)
+    .sort((a, b) => (b.conflict_count || 0) - (a.conflict_count || 0))
+    .slice(0, 6);
+
+  const high   = conflicted.map(r => (r.conflicts||[]).filter(c=>c.severity==='HIGH').length);
+  const medium = conflicted.map(r => (r.conflicts||[]).filter(c=>c.severity==='MEDIUM').length);
+  const low    = conflicted.map(r => (r.conflicts||[]).filter(c=>c.severity==='LOW').length);
+
+  if (_charts.thesisConflicts) _charts.thesisConflicts.destroy();
+  _charts.thesisConflicts = new Chart(document.getElementById('thesis-conflicts'), {
+    type: 'bar',
+    data: {
+      labels: conflicted.map(r => r.name || r.url),
+      datasets: [
+        { label: 'HIGH',   data: high,   backgroundColor: 'rgba(255,92,92,.7)',  borderRadius: 3 },
+        { label: 'MEDIUM', data: medium, backgroundColor: 'rgba(255,181,71,.7)', borderRadius: 3 },
+        { label: 'LOW',    data: low,    backgroundColor: 'rgba(107,117,112,.5)', borderRadius: 3 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { stacked: true, ticks: { color: '#374151', font: { size: 11 } }, grid: { display: false } },
+        y: { stacked: true, ticks: { color: '#6b7280' }, grid: { color: 'rgba(0,0,0,0.05)' } }
+      }
+    }
+  });
+
+  // ── RQ3: Compliance doughnut ────────────────────────────────────────
+  const statusCounts = { COMPLIANT: 0, NOMINAL: 0, PARTIAL: 0, NON_COMPLIANT: 0 };
+  valid.forEach(r => { statusCounts[r.compliance_status] = (statusCounts[r.compliance_status] || 0) + 1; });
+
+  if (_charts.thesisCompliance) _charts.thesisCompliance.destroy();
+  _charts.thesisCompliance = new Chart(document.getElementById('thesis-compliance'), {
+    type: 'doughnut',
+    data: {
+      labels: [
+        `Compliant (${statusCounts.COMPLIANT})`,
+        `Nominal (${statusCounts.NOMINAL})`,
+        `Partial (${statusCounts.PARTIAL})`,
+        `Non-compliant (${statusCounts.NON_COMPLIANT})`
+      ],
+      datasets: [{
+        data: [statusCounts.COMPLIANT, statusCounts.NOMINAL, statusCounts.PARTIAL, statusCounts.NON_COMPLIANT],
+        backgroundColor: ['#00e5a0', '#ffb547', '#4da6ff', '#ff5c5c'],
+        borderWidth: 3, borderColor: '#ffffff'
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '65%',
+      plugins: { legend: { display: false } }
+    }
+  });
+
+  // ── RQ3: Intended vs effective gap bar ─────────────────────────────
+  const intended  = valid.filter(r => r.compliance?.intended_optout || r.intended_optout).length;
+  const effective = valid.filter(r => r.compliance?.effective_optout || r.effective_optout).length;
+  const intendedPct  = Math.round(intended  / total * 100 * 100) / 100;
+  const effectivePct = Math.round(effective / total * 100 * 100) / 100;
+
+  if (_charts.thesisGap) _charts.thesisGap.destroy();
+  _charts.thesisGap = new Chart(document.getElementById('thesis-gap-bar'), {
+    type: 'bar',
+    data: {
+      labels: [`Intended opt-out (${intendedPct}%)`, `Effective opt-out (${effectivePct}%)`],
+      datasets: [{
+        data: [intendedPct, effectivePct],
+        backgroundColor: ['rgba(77,166,255,.7)', 'rgba(0,229,160,.8)'],
+        borderRadius: 4, borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { max: 100, ticks: { color: '#6b7280', callback: v => v + '%' }, grid: { color: 'rgba(0,0,0,0.05)' } },
+        y: { ticks: { color: '#374151', font: { size: 12 } }, grid: { display: false } }
+      }
+    }
+  });
+
+  // Update the legend rows dynamically
+  document.querySelector('#page-thesis .legend-row')?.querySelectorAll('.legend-item').forEach(el => el.remove());
 }
 
-function initThesisCharts(){
-  new Chart(document.getElementById('thesis-tier'),{type:'bar',data:{labels:['Tier 3 -- Surgical','Tier 5 -- True Nuclear','Tier 4b -- Secured Nuclear','Tier 1 -- Open'],datasets:[{data:[30,27,14,10],backgroundColor:['#00e5a0','#ff5c5c','#4da6ff','#6b7570'],borderRadius:4,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6b7570',font:{size:11}},grid:{color:'rgba(255,255,255,0.05)'}},y:{ticks:{color:'#e8ede9',font:{size:12}},grid:{display:false}}}}});
-  new Chart(document.getElementById('thesis-conflicts'),{type:'bar',data:{labels:['Aftonbladet','Svenska Dagbladet','NTM (14 sites)','Dagens Nyheter'],datasets:[{label:'HIGH',data:[35,35,0,0],backgroundColor:'rgba(255,92,92,.7)',borderRadius:3},{label:'MEDIUM',data:[0,0,24,0],backgroundColor:'rgba(255,181,71,.7)',borderRadius:3},{label:'LOW',data:[0,0,0,1],backgroundColor:'rgba(107,117,112,.5)',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,ticks:{color:'#e8ede9',font:{size:12}},grid:{display:false}},y:{stacked:true,ticks:{color:'#6b7570'},grid:{color:'rgba(255,255,255,0.05)'}}}}});
-  new Chart(document.getElementById('thesis-compliance'),{type:'doughnut',data:{labels:['Compliant (69)','Non-compliant (10)','Nominal (2)'],datasets:[{data:[69,10,2],backgroundColor:['#00e5a0','#ff5c5c','#ffb547'],borderWidth:3,borderColor:'#0d0f0e'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},cutout:'65%'}});
-  new Chart(document.getElementById('thesis-gap-bar'),{type:'bar',data:{labels:['Intended opt-out (87.65%)','Effective opt-out (85.19%)'],datasets:[{data:[87.65,85.19],backgroundColor:['rgba(77,166,255,.6)','rgba(0,229,160,.7)'],borderRadius:4,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{max:100,ticks:{color:'#6b7570',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.05)'}},y:{ticks:{color:'#e8ede9',font:{size:12}},grid:{display:false}}}}});
+function escHtml(s) {
+  return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
+function highlightRobotsLine(raw, conflicts, lineMap) {
+  // Build conflict index by line number
+  const conflictByLine = {};
+  (conflicts || []).forEach(c => {
+    if (typeof c.line_number === 'number') conflictByLine[c.line_number] = c;
+  });
 
-initThesisCharts();
+  return raw.split('\n').map((line, i) => {
+    const meta   = lineMap ? lineMap[i] : null;
+    const conflict = conflictByLine[i];
+
+    // Row background priority: conflict > relevant block > relevant allow > neutral
+    let rowCls = '';
+    if (conflict) {
+      rowCls = conflict.severity === 'HIGH' ? 'insp-line-high'
+             : conflict.severity === 'MEDIUM' ? 'insp-line-med' : 'insp-line-low';
+    } else if (meta) {
+      if (meta.type === 'disallow' && meta.relevant && meta.severity === 'ok')
+        rowCls = 'insp-line-blocked';   // green tint — effective block
+      else if (meta.type === 'allow' && meta.relevant)
+        rowCls = 'insp-line-allow';     // amber tint — allow for AI bot
+      else if (meta.type === 'user-agent' && meta.relevant)
+        rowCls = 'insp-line-agent';     // blue tint — relevant agent
+    }
+
+    // Conflict marker badge
+    let marker = '';
+    if (conflict) {
+      const cls = conflict.severity === 'HIGH' ? 'insp-mark-high'
+                : conflict.severity === 'MEDIUM' ? 'insp-mark-med' : 'insp-mark-low';
+      const sym = conflict.severity === 'HIGH' ? '!' : conflict.severity === 'MEDIUM' ? '~' : 'i';
+      marker = ` <span class="insp-mark ${cls}" title="${escHtml(conflict.type)} — ${escHtml(conflict.detail||'')}">${sym}</span>`;
+    } else if (meta && meta.relevant && meta.type === 'disallow' && meta.severity === 'ok') {
+      marker = ` <span class="insp-mark insp-mark-ok" title="Effective AI block">✓</span>`;
+    }
+
+    // Syntax colouring
+    const t = line.trimStart();
+    let html = '';
+    if (!t || t.startsWith('#')) {
+      html = `<span class="syn-comment">${escHtml(line)}</span>`;
+    } else if (t.toLowerCase().startsWith('user-agent:')) {
+      const c = line.indexOf(':');
+      html = `<span class="syn-key">${escHtml(line.slice(0,c+1))}</span><span class="syn-ua">${escHtml(line.slice(c+1))}</span>`;
+    } else if (t.toLowerCase().startsWith('disallow:')) {
+      const c = line.indexOf(':');
+      html = `<span class="syn-key">${escHtml(line.slice(0,c+1))}</span><span class="syn-dis">${escHtml(line.slice(c+1))}</span>`;
+    } else if (t.toLowerCase().startsWith('allow:')) {
+      const c = line.indexOf(':');
+      html = `<span class="syn-key">${escHtml(line.slice(0,c+1))}</span><span class="syn-allow">${escHtml(line.slice(c+1))}</span>`;
+    } else if (t.toLowerCase().startsWith('sitemap:') || t.toLowerCase().startsWith('crawl-delay:')) {
+      const c = line.indexOf(':');
+      html = `<span class="syn-key">${escHtml(line.slice(0,c+1))}</span><span class="syn-val">${escHtml(line.slice(c+1))}</span>`;
+    } else {
+      html = `<span class="syn-val">${escHtml(line)}</span>`;
+    }
+
+    return `<div class="insp-line ${rowCls}" id="rline-${i}">
+      <span class="insp-ln">${i+1}</span>
+      <span class="insp-lc">${html}${marker}</span>
+    </div>`;
+  }).join('');
+}

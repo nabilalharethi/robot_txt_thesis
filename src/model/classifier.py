@@ -86,7 +86,7 @@ def _parse_sections(lines):
     sections = {}
     current_agents = []
 
-    for line in lines:
+    for i, line in enumerate(lines):
         line = line.strip()
 
         # Skip blank lines and comments without resetting context

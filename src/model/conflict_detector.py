@@ -20,61 +20,86 @@ def _parse_raw_sections(lines):
     current = None
 
     for i, line in enumerate(lines):
-        line = line.strip()
-        if not line or line.startswith("#"):
+        stripped  = line.strip().lower()
+        if not stripped  or stripped .startswith("#"):
             continue
 
-        if line.startswith("user-agent:"):
-            agent = line.split(":", 1)[1].strip()
+        if stripped .startswith("user-agent:"):
+            agent = stripped .split(":", 1)[1].strip()
             if current and not current["directives"]:
                 current["agents"].append(agent)
             else:
-                current = {"agents": [agent], "directives": [], "line_start": i + 1}
+                current = {"agents": [agent], "directives": [], "line_start":i}
                 sections.append(current)
 
-        elif line.startswith(("disallow:", "allow:", "crawl-delay:")):
+        elif stripped .startswith(("disallow:", "allow:", "crawl-delay:")):
             if current is not None:
-                current["directives"].append(line)
+                current["directives"].append({"text": stripped, "line": i})
 
         else:
             current = None
 
     return sections
 
-
 def _path(directive):
-    return directive.split(":", 1)[1].strip() if ":" in directive else ""
+    if isinstance(directive, dict):
+        text = directive["text"]
+    elif isinstance(directive, str):
+        text = directive
+    else:
+        return ""
+    return text.split(":", 1)[1].strip() if ":" in text else ""
 
+def _dtype(directive):
+    if isinstance(directive, dict):
+        text = directive["text"]
+    elif isinstance(directive, str):
+        text = directive
+    else:
+        return ""
+    return text.split(":")[0].strip().lower()
+
+def _dline(directive):
+    if isinstance(directive, dict):
+        return directive.get("line")
+    return None
 
 def _detect_wildcard_override(sections):
     conflicts = []
 
-    wildcard_allow_lines = []
-    for s in sections:
-        if "*" in s["agents"]:
-            for d in s["directives"]:
-                if d.startswith("allow:") and _path(d) == "/":
-                    wildcard_allow_lines.append(s["line_start"])
-
-    if not wildcard_allow_lines:
+    # Look for wildcard Disallow: / (the block we want to protect)
+    wildcard_section = next((s for s in sections if "*" in s["agents"]), None)
+    if not wildcard_section:
+        return conflicts
+    
+    has_wildcard_disallow = any(
+        _dtype(d) == "disallow" and _path(d) == "/"
+        for d in wildcard_section["directives"]
+    )
+    if not has_wildcard_disallow:
         return conflicts
 
+    # Now find per-bot sections that re-grant access with Allow: /
+    # This is the Enumeration Fallacy — wildcard block cancelled by named Allow
     for s in sections:
         if "*" in s["agents"]:
             continue
-        if any(d.startswith("disallow:") and _path(d) == "/" for d in s["directives"]):
-            for agent in s["agents"]:
-                conflicts.append({
-                    "type":           "WILDCARD_OVERRIDE",
-                    "description":    CONFLICT_TYPES["WILDCARD_OVERRIDE"],
-                    "affected_agent": agent,
-                    "severity":       "HIGH",
-                    "detail": (
-                        f"Agent '{agent}' has Disallow: / at line {s['line_start']} "
-                        f"but wildcard Allow: / at line {wildcard_allow_lines[0]} "
-                        f"may override it in non-RFC-compliant crawlers."
-                    ),
-                })
+        for d in s["directives"]:
+            if _dtype(d) == "allow" and _path(d) == "/":
+                for agent in s["agents"]:
+                    conflicts.append({
+                        "type":           "WILDCARD_OVERRIDE",
+                        "description":    CONFLICT_TYPES["WILDCARD_OVERRIDE"],
+                        "affected_agent": agent,
+                        "severity":       "HIGH",
+                        "line_number":    _dline(d),
+                        "detail": (
+                            f"Agent '{agent}' has Allow: / at line {_dline(d)+1 if _dline(d) is not None else '?'} "
+                            f"which cancels the wildcard Disallow: / under RFC 9309. "
+                            f"The wildcard block appears protective but is semantically void "
+                            f"for this agent — core Enumeration Fallacy mechanism."
+                        ),
+                    })
 
     return conflicts
 
@@ -91,6 +116,7 @@ def _detect_duplicate_sections(sections):
                     "description":    CONFLICT_TYPES["DUPLICATE_SECTION"],
                     "affected_agent": agent,
                     "severity":       "MEDIUM",
+                    "line_number":    s["line_start"],
                     "detail": (
                         f"Agent '{agent}' appears at lines {seen[agent]} "
                         f"and {s['line_start']}. RFC 9309 §2.2.1 requires "
@@ -107,10 +133,9 @@ def _detect_allow_disallow_conflict(sections):
     conflicts = []
 
     for s in sections:
-        disallows = {_path(d) for d in s["directives"] if d.startswith("disallow:") and _path(d)}
-        allows = {_path(d) for d in s["directives"] if d.startswith("allow:") and _path(d)}
-        overlap = disallows & allows
-
+        disallows = {_path(d): _dline(d) for d in s["directives"] if _dtype(d) == "disallow" and _path(d)}
+        allows = {_path(d): _dline(d) for d in s["directives"] if _dtype(d) == "allow" and _path(d)}
+        overlap = set(disallows.keys()) & set(allows.keys())
         for path in overlap:
             for agent in s["agents"]:
                 conflicts.append({
@@ -118,6 +143,7 @@ def _detect_allow_disallow_conflict(sections):
                     "description":    CONFLICT_TYPES["ALLOW_DISALLOW_CONFLICT"],
                     "affected_agent": agent,
                     "severity":       "HIGH",
+                    "line_number":    allows[path],
                     "detail": (
                         f"Section at line {s['line_start']} has both "
                         f"Allow: {path} and Disallow: {path}. "
@@ -132,14 +158,8 @@ def _detect_ordering_violation(sections):
     conflicts = []
 
     for s in sections:
-        has_root_disallow = any(
-            d.startswith("disallow:") and _path(d) == "/"
-            for d in s["directives"]
-        )
-        specific_allows = [
-            d for d in s["directives"]
-            if d.startswith("allow:") and len(_path(d)) > 1
-        ]
+        has_root_disallow = any(_dtype(d) == "disallow" and _path(d) == "/" for d in s["directives"])
+        specific_allows   = [d for d in s["directives"] if _dtype(d) == "allow" and len(_path(d)) > 1]
 
         if has_root_disallow and specific_allows:
             for agent in s["agents"]:
@@ -148,6 +168,7 @@ def _detect_ordering_violation(sections):
                     "description":    CONFLICT_TYPES["ORDERING_VIOLATION"],
                     "affected_agent": agent,
                     "severity":       "LOW",
+                    "line_number":    s["line_start"],
                     "detail": (
                         f"Section at line {s['line_start']} has Disallow: / "
                         f"with specific Allow rules: "
@@ -163,14 +184,8 @@ def _detect_empty_disallow_conflict(sections):
     conflicts = []
 
     for s in sections:
-        has_empty = any(
-            d.startswith("disallow:") and _path(d) == ""
-            for d in s["directives"]
-        )
-        has_real = any(
-            d.startswith("disallow:") and _path(d) != ""
-            for d in s["directives"]
-        )
+        has_empty = any(_dtype(d) == "disallow" and _path(d) == "" for d in s["directives"])
+        has_real  = any(_dtype(d) == "disallow" and _path(d) != "" for d in s["directives"])
 
         if has_empty and has_real:
             for agent in s["agents"]:
@@ -179,6 +194,7 @@ def _detect_empty_disallow_conflict(sections):
                     "description":    CONFLICT_TYPES["EMPTY_DISALLOW_CONFLICT"],
                     "affected_agent": agent,
                     "severity":       "HIGH",
+                    "line_number":    s["line_start"],
                     "detail": (
                         f"Section at line {s['line_start']} contains both "
                         f"Disallow: (empty = allow all) and specific Disallow "
@@ -224,3 +240,64 @@ def detect_conflicts(content):
         "conflict_types":  conflict_types,
         "summary":         summary,
     }
+    
+def build_line_map(content):
+    from src.model.classifier import BOTS
+    all_ai_bots = set(
+        b.lower() for b in
+        BOTS["APP_LAYER"] + BOTS["INFRA_LAYER"] + BOTS["GOOGLE_AI"] + BOTS["GOOGLE_SEARCH"]
+    )
+
+    lines = content.splitlines()
+    line_map = {}
+    current_agents = []
+
+    for i, raw in enumerate(lines):
+        stripped = raw.strip()
+        lowered  = stripped.lower()
+
+        if not stripped or stripped.startswith("#"):
+            line_map[i] = {"type": "comment", "relevant": False, "severity": "info"}
+            # blank lines do NOT reset agent context per RFC 9309
+            continue
+
+        if lowered.startswith("user-agent:"):
+            agent = lowered.split(":", 1)[1].strip()
+            current_agents = [agent]
+            relevant = agent == "*" or agent in all_ai_bots
+            line_map[i] = {
+                "type": "user-agent", "agent": agent,
+                "relevant": relevant,
+                "severity": "ok" if relevant else "info"
+            }
+
+        elif lowered.startswith("disallow:"):
+            path = lowered.split(":", 1)[1].strip()
+            relevant = any(a == "*" or a in all_ai_bots for a in current_agents)
+            blocking = path == "/"
+            line_map[i] = {
+                "type": "disallow", "path": path,
+                "relevant": relevant,
+                "severity": "ok" if (relevant and blocking) else ("warn" if relevant else "info")
+            }
+
+        elif lowered.startswith("allow:"):
+            path = lowered.split(":", 1)[1].strip()
+            relevant = any(a == "*" or a in all_ai_bots for a in current_agents)
+            # Allow on a relevant agent is always a warning — it grants access
+            line_map[i] = {
+                "type": "allow", "path": path,
+                "relevant": relevant,
+                "severity": "warn" if relevant else "info"
+            }
+
+        elif lowered.startswith("sitemap:") or lowered.startswith("crawl-delay:") or lowered.startswith("host:"):
+            # Known non-directive lines — do NOT reset agent context
+            line_map[i] = {"type": "other", "relevant": False, "severity": "info"}
+
+        else:
+            # Truly unrecognised token — reset per RFC 9309
+            current_agents = []
+            line_map[i] = {"type": "other", "relevant": False, "severity": "info"}
+
+    return line_map

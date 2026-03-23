@@ -9,6 +9,7 @@ from flask_cors import CORS
 import logging
 import os
 
+import traceback
 from src.model import scraper
 from src.model import classifier
 from src.model import conflict_detector
@@ -16,6 +17,7 @@ from src.model import compliance
 from src.model import result_builder as rb
 from src.model import data as data_model
 from src.model import compliance as comp_model
+from src.model.conflict_detector import build_line_map
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 WEB_DIR = os.path.join(BASE_DIR, "src", "view", "web_view")
@@ -45,25 +47,24 @@ def _analyze_url(url: str, name: str = "", group: str = "Manual") -> dict:
     comp_res = compliance.analyze_compliance(content, result_cls, cf1)
     return rb.build_success_result(
         site=site, classification=result_cls, conflict=cf1,
-        compliance=comp_res, redirected=redirected, redirect_info=redirect_info,
+        compliance=comp_res, redirected=redirected, redirect_info=redirect_info,raw_content=content,line_map=build_line_map(content)
     )
 
 
-def _serialize(result: dict) -> dict:
-    out = {}
-    for k, v in result.items():
-        if isinstance(v, list) and v and isinstance(v[0], dict):
-            out[k] = v
-        elif isinstance(v, dict):
-            out[k] = _serialize(v)
-        else:
-            try:
-                import json
-                json.dumps(v)
-                out[k] = v
-            except TypeError:
-                out[k] = str(v)
-    return out
+def _serialize(obj):
+    if isinstance(obj, dict):
+        return {str(k): _serialize(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_serialize(i) for i in obj]
+    else:
+        try:
+            import json
+            json.dumps(obj)
+            return obj
+        except TypeError:
+            return str(obj)
+
+
 
 
 @app.route("/analyze", methods=["POST"])
@@ -79,8 +80,9 @@ def analyze_single():
     try:
         return jsonify(_serialize(_analyze_url(url, name, group)))
     except Exception as e:
+        tb = traceback.format_exc()
         logger.exception(f"Error analyzing {url}: {e}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e), "traceback": tb}), 500
 
 
 @app.route("/analyze-batch", methods=["POST"])
@@ -108,6 +110,7 @@ def get_results():
         return jsonify({"results": [], "metrics": {}})
     return jsonify({"results": [_serialize(r) for r in _last_batch_results],
                     "metrics": comp_model.compute_gap_metrics(_last_batch_results)})
+
 
 
 if __name__ == "__main__":

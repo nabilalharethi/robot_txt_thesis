@@ -64,7 +64,7 @@ def analyze_compliance(content, classification_result, conflict_result):
             "direct_block":        direct_block,
             "wildcard_cover":      wildcard_cover,
             "conflict_undermined": undermined,
-            "bots":                bot_list,
+            #"bots":                bot_list,
         }
 
     score = round(sum(
@@ -76,8 +76,17 @@ def analyze_compliance(content, classification_result, conflict_result):
         b.lower() for b in
         BOTS["APP_LAYER"] + BOTS["INFRA_LAYER"] + BOTS["GOOGLE_AI"]
     ]
-    intended_optout = any(
-        a in all_ai_bots and _is_fully_blocked(sections.get(a, []))
+
+    wildcard_has_disallow = any(
+        d.startswith("disallow:") and d.split(":", 1)[1].strip()
+        for d in sections.get("*", [])
+    )
+
+    intended_optout = wildcard_has_disallow or any(
+        a in all_ai_bots and any(
+            d.startswith("disallow:") and d.split(":", 1)[1].strip()
+            for d in sections.get(a, [])
+        )
         for a in sections
     )
     effective_optout = all(v["effective"] for v in layer_analysis.values())

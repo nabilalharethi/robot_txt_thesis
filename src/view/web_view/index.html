@@ -22,10 +22,7 @@
   <nav class="nav">
     <div class="nav-label">Analysis</div>
     <button class="nav-item active" onclick="showPage('analyze',this)"><span class="icon">&#8981;</span> Analyze URL</button>
-    <button class="nav-item" onclick="showPage('dashboard',this)"><span class="icon">&#9636;</span> Dashboard</button>
-    <button class="nav-item" onclick="showPage('results',this)"><span class="icon">&#8801;</span> Results Table</button>
     <div class="nav-label">Thesis</div>
-    <button class="nav-item" onclick="showPage('thesis',this)"><span class="icon">&#9672;</span> Thesis Visualizations</button>
     <button class="nav-item" onclick="showPage('about',this)"><span class="icon">&#9432;</span> About this Tool</button>
     <button class="nav-item" onclick="showPage('legend',this)"><span class="icon">&#9633;</span> Tier Legend</button>
   </nav>
@@ -49,8 +46,8 @@
         <input type="text" id="input-name" placeholder="BBC News" />
       </div>
       <div class="field">
-        <label>Publisher group (optional)</label>
-        <input type="text" id="input-group" placeholder="BBC" />
+        <label>Country (optional)</label>
+        <input type="text" id="input-group" placeholder="UK" />
       </div>
     </div>
     <button class="btn-primary" id="btn-analyze" onclick="runSingleAnalysis()">
@@ -70,120 +67,8 @@
   </div>
 </div>
 
-<!-- DASHBOARD -->
-<div class="page" id="page-dashboard">
-  <div class="page-title">Overview</div>
-  <div class="page-heading">Dashboard</div>
-  <div id="dashboard-empty" class="empty-state">
-    <div class="icon">&#9636;</div>
-    <p>No batch results loaded.</p>
-    <br>
-    <button class="btn-secondary" onclick="loadDemoData()">Load demo data (Swedish dataset)</button>
-  </div>
-  <div id="dashboard-content" style="display:none">
-    <div class="metrics-row" id="metrics-row"></div>
-    <div class="charts-row">
-      <div class="chart-card"><h4>Defense tier distribution</h4><div style="position:relative;height:220px"><canvas id="chart-tier"></canvas></div></div>
-      <div class="chart-card">
-        <h4>Compliance by group</h4>
-        <div class="legend-row">
-          <span class="legend-item"><span class="legend-dot" style="background:#00e5a0"></span>Compliant</span>
-          <span class="legend-item"><span class="legend-dot" style="background:#ff5c5c"></span>Non-compliant</span>
-          <span class="legend-item"><span class="legend-dot" style="background:#ffb547"></span>Nominal</span>
-        </div>
-        <div style="position:relative;height:200px"><canvas id="chart-group"></canvas></div>
-      </div>
-    </div>
-    <div class="charts-row">
-      <div class="chart-card"><h4>Compliance gap (RQ3)</h4><div style="position:relative;height:200px"><canvas id="chart-compliance"></canvas></div></div>
-      <div class="chart-card"><h4>Intended vs effective opt-out</h4><div style="position:relative;height:200px"><canvas id="chart-intent"></canvas></div></div>
-    </div>
-  </div>
-</div>
 
-<!-- RESULTS TABLE -->
-<div class="page" id="page-results">
-  <div class="page-title">Full dataset</div>
-  <div class="page-heading">Results Table</div>
-  <div style="display:flex;gap:12px;margin-bottom:20px">
-    <button class="btn-primary" id="btn-batch" onclick="runBatchAnalysis()">
-      <span id="batch-spinner" style="display:none" class="spinner"></span>
-      Run batch (targets.json)
-    </button>
-    <button class="btn-secondary" onclick="loadDemoData()">Load demo data</button>
-  </div>
-  <div id="results-empty" class="empty-state"><div class="icon">&#8801;</div><p>No results yet.</p></div>
-  <div id="results-table-wrap" style="display:none" class="results-table-wrap">
-    <div class="table-header">
-      <h4>Sites -- <span id="table-count">0</span> results</h4>
-      <div class="filter-row">
-        <select class="filter-select" id="filter-tier" onchange="filterTable()">
-          <option value="">All tiers</option>
-          <option>Tier 5</option><option>Tier 4b</option><option>Tier 4a</option><option>Tier 3</option><option>Tier 2</option><option>Tier 1</option>
-        </select>
-        <select class="filter-select" id="filter-compliance" onchange="filterTable()">
-          <option value="">All statuses</option>
-          <option>COMPLIANT</option><option>NOMINAL</option><option>NON_COMPLIANT</option>
-        </select>
-      </div>
-    </div>
-    <div style="overflow-x:auto">
-      <table>
-        <thead><tr><th>Site</th><th>Group</th><th>Country</th><th>Tier</th><th>Compliance</th><th>Conflicts</th><th>Score</th></tr></thead>
-        <tbody id="results-tbody"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
 
-<!-- THESIS VIZ -->
-<div class="page" id="page-thesis">
-  <div class="page-title">Bachelor Thesis &middot; 2DV50E</div>
-  <div class="page-heading">Thesis Visualizations</div>
-  <p style="font-size:13px;color:var(--muted);max-width:640px;margin-bottom:28px;line-height:1.7">Static figures from the 81-site Swedish media dataset. Each maps to a research question.</p>
-
-  <div style="margin-bottom:36px">
-    <div style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px">RQ1 -- Defense tier distribution</div>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:14px">How do configurations distribute across the six-tier classification?</p>
-    <div class="chart-card">
-      <h4>Defense tier distribution -- 81 valid sites</h4>
-      <div class="legend-row">
-        <span class="legend-item"><span class="legend-dot" style="background:#ff5c5c"></span>Tier 5: True Nuclear (27, 33%)</span>
-        <span class="legend-item"><span class="legend-dot" style="background:#4da6ff"></span>Tier 4b: Secured Nuclear (14, 17%)</span>
-        <span class="legend-item"><span class="legend-dot" style="background:#00e5a0"></span>Tier 3: Surgical (30, 37%)</span>
-        <span class="legend-item"><span class="legend-dot" style="background:#6b7570"></span>Tier 1: Open (10, 12%)</span>
-      </div>
-      <div style="position:relative;height:260px"><canvas id="thesis-tier"></canvas></div>
-    </div>
-  </div>
-
-  <div style="margin-bottom:36px">
-    <div style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px">RQ2 -- Directive conflict detection</div>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:14px">17 of 81 sites (21%) have conflicts. Aftonbladet and SvD exhibit the Enumeration Fallacy.</p>
-    <div style="background:var(--surface);border:1px solid rgba(255,181,71,.3);border-left:3px solid var(--warn);border-radius:0 8px 8px 0;padding:20px 22px;max-width:640px;margin-bottom:16px">
-      <div style="font-family:var(--mono);font-size:12px;color:var(--warn);margin-bottom:8px;letter-spacing:.06em">THE ENUMERATION FALLACY</div>
-      <p style="font-size:13px;color:var(--muted);line-height:1.7">Aftonbladet and Svenska Dagbladet declare <code>User-agent: * / Disallow: /</code> (appears maximally protective, Tier 5) but then add 35 per-bot <code>Allow: /</code> entries. RFC 9309 says Allow wins over Disallow -- the wildcard block is cancelled for every named bot. Binary parsers count this site as "protected". The SCA classifies it <strong style="color:var(--warn)">NOMINAL</strong> -- intended but not effective.</p>
-    </div>
-    <div class="chart-card"><h4>Conflict severity -- 17 sites with conflicts</h4><div style="position:relative;height:200px"><canvas id="thesis-conflicts"></canvas></div></div>
-  </div>
-
-  <div style="margin-bottom:36px">
-    <div style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px">RQ3 -- EU AI Act compliance gap</div>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Ref: Recital 105 / Article 53(1)(c). Gap between intended (87.65%) and effective (85.19%) opt-out.</p>
-    <div class="charts-row">
-      <div class="chart-card">
-        <h4>Compliance status -- 81 sites</h4>
-        <div class="legend-row">
-          <span class="legend-item"><span class="legend-dot" style="background:#00e5a0"></span>Compliant 69 (85.2%)</span>
-          <span class="legend-item"><span class="legend-dot" style="background:#ffb547"></span>Nominal 2 (2.5%)</span>
-          <span class="legend-item"><span class="legend-dot" style="background:#ff5c5c"></span>Non-compliant 10 (12.3%)</span>
-        </div>
-        <div style="position:relative;height:220px"><canvas id="thesis-compliance"></canvas></div>
-      </div>
-      <div class="chart-card"><h4>Intended vs effective opt-out</h4><div style="position:relative;height:220px"><canvas id="thesis-gap-bar"></canvas></div></div>
-    </div>
-  </div>
-</div>
 
 <!-- ABOUT -->
 <div class="page" id="page-about">
@@ -242,10 +127,6 @@
       <div class="diff-card hl">
         <h4>This tool -- semantic analysis</h4>
         <p>The SCA parses robots.txt into a structured section map and evaluates it as a semantic unit. It checks all five conflict classes, evaluates three distinct bot layers with weighted importance, and distinguishes between <em>intended</em> and <em>effective</em> protection. A site can appear protected while being fully open.</p>
-      </div>
-      <div class="diff-card">
-        <h4>Prior academic studies</h4>
-        <p>Liu et al. (2025), Cui et al. (2025), and Dinzinger et al. (2024) measured robots.txt adoption using binary parsers. They report "X% block GPTBot" without checking whether that block is actually effective or undermined by conflicting directives in the same file.</p>
       </div>
       <div class="diff-card hl">
         <h4>This thesis contribution</h4>

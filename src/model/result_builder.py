@@ -64,7 +64,7 @@ def build_error_result(site, error_code):
 
 
 def build_success_result(site, classification, conflict, compliance,
-                         redirected, redirect_info):
+                         redirected, redirect_info, raw_content="", line_map=None):
     return {
         'name':             site['name'],
         'url':              site['url'],
@@ -87,6 +87,8 @@ def build_success_result(site, classification, conflict, compliance,
         'effective_optout':   compliance.get('effective_optout'),
         'conflict_impact':    compliance.get('conflict_impact'),
         'eu_ai_act_ref':      compliance.get('eu_ai_act_ref'),
+        'raw_content':      raw_content,
+        'line_map':    line_map or {},
         'timestamp':        datetime.now().isoformat(),
         'error_type':       None,
         'compliance':       compliance,

@@ -1,18 +1,40 @@
 /* Root variables for color theme and fonts */
 :root {
-  --bg: #0d0f0e;
-  --surface: #141716;
-  --surface2: #1c1f1d;
-  --border: #2a2e2c;
-  --accent: #00e5a0;
-  --accent2: #00b37a;
-  --text: #e8ede9;
-  --muted: #6b7570;
-  --danger: #ff5c5c;
-  --warn: #ffb547;
-  --info: #4da6ff;
-  --mono: 'IBM Plex Mono', monospace;
-  --sans: 'IBM Plex Sans', sans-serif;
+  --bg:        #F5F6F8;
+  --surface:   #FFFFFF;
+  --surface2:  #EDEEF1;
+  --border:    #E2E4E9;
+  --border2:   #C8CBD4;
+ 
+  --accent:    #2563EB;
+  --accent2:   #1D4ED8;
+  --accent-bg: #EFF4FF;
+ 
+  /* ── unified text scale ── */
+  --text:      #111827;   /* headings, site names, strong labels */
+  --sub:       #374151;   /* body text, table cells */
+  --muted:     #000000;   /* secondary labels, descriptions */
+  --hint:      #9CA3AF;   /* placeholders, nav labels, footers */
+ 
+  --danger:    #B91C1C;
+  --danger-bg: #FEF2F2;
+  --danger-bd: #FECACA;
+ 
+  --warn:      #B45309;
+  --warn-bg:   #FFFBEB;
+  --warn-bd:   #FCD34D;
+ 
+  --ok:        #15803D;
+  --ok-bg:     #F0FDF4;
+  --ok-bd:     #86EFAC;
+ 
+  --mono: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+  --sans: 'Inter', 'IBM Plex Sans', system-ui, sans-serif;
+ 
+  /* ── base font — ONE size throughout ── */
+  --fs:    13px;   /* everything defaults to this */
+  --fs-sm: 11px;   /* labels, badges, captions only */
+  --fs-xs: 10px;   /* uppercase nav labels, table headers only */
 }
 
 /* Reset box-sizing and margin/padding for all elements */
@@ -221,7 +243,7 @@ body {
   align-items: center;
   gap: 8px;
   background: var(--accent);
-  color: #0d0f0e;
+  color: #ffffff;
   border: none;
   padding: 10px 22px;
   border-radius: 6px;
@@ -910,3 +932,9 @@ code {
   font-weight: 500;
   font-size: 11px;
 }
+.insp-line-blocked { background: #F0FDF4; }   /* green — effective AI block  */
+.insp-line-allow   { background: #FFFBEB; }   /* amber — allow for AI bot    */
+.insp-line-agent   { background: #EFF6FF; }   /* blue  — relevant user-agent */
+.insp-mark-ok { background: #D1FAE5; color: #065F46; }  /* green check badge */
+.tp4a { background: rgba(131, 56, 236, .15); color: #a855f7; }
+.tp2  { background: rgba(251, 133, 0, .15);  color: #fb8500; }
