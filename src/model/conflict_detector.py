@@ -17,7 +17,7 @@ CONFLICT_TYPES = {
 
 def _parse_raw_sections(lines):
     sections = []
-    current  = None
+    current = None
 
     for i, line in enumerate(lines):
         line = line.strip()
@@ -81,7 +81,7 @@ def _detect_wildcard_override(sections):
 
 def _detect_duplicate_sections(sections):
     conflicts = []
-    seen      = {}
+    seen = {}
 
     for s in sections:
         for agent in s["agents"]:
@@ -108,8 +108,8 @@ def _detect_allow_disallow_conflict(sections):
 
     for s in sections:
         disallows = {_path(d) for d in s["directives"] if d.startswith("disallow:") and _path(d)}
-        allows    = {_path(d) for d in s["directives"] if d.startswith("allow:") and _path(d)}
-        overlap   = disallows & allows
+        allows = {_path(d) for d in s["directives"] if d.startswith("allow:") and _path(d)}
+        overlap = disallows & allows
 
         for path in overlap:
             for agent in s["agents"]:

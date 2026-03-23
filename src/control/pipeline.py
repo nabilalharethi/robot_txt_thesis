@@ -85,7 +85,7 @@ def process_site(site, site_number, total_sites, logger):
     compliance=comp,
     redirected=redirected,
     redirect_info=redirect_info,
-)
+    )
 
     # ------------------------------------------------------------------
     # Step 7: Display result row in terminal

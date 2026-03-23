@@ -19,7 +19,7 @@ BOTS = {
     "APP_LAYER": [
         "GPTBot",           # OpenAI training
         "ClaudeBot",        # Anthropic training
-        "Claude-SearchBot", # Anthropic search
+        "Claude-SearchBot",  # Anthropic search
         "Claude-User",      # Anthropic user-agent variant
         "ChatGPT-User",     # OpenAI user-agent variant
         "OAI-SearchBot",    # OpenAI search
@@ -201,39 +201,39 @@ def classify(content, ext_logger=None):
     if has_wildcard:
         if not google_allowed:
             return _result("Tier 5", "True Nuclear",
-                "Wildcard block with no exceptions. All crawlers blocked. "
-                "Maximum protection; SEO sacrificed.",
-                signals)
+                           "Wildcard block with no exceptions. All crawlers blocked. "
+                           "Maximum protection; SEO sacrificed.",
+                           signals)
 
         if google_ai_block:
             return _result("Tier 4b", "Secured Nuclear",
-                "Wildcard block + Google Search exception + Google-Extended "
-                "explicitly blocked. Secure against Gemini training while "
-                "preserving SEO.",
-                signals)
+                           "Wildcard block + Google Search exception + Google-Extended "
+                           "explicitly blocked. Secure against Gemini training while "
+                           "preserving SEO.",
+                           signals)
 
         return _result("Tier 4a", "SEO-Captive Nuclear",
-            "Wildcard block + Google Search exception, but Google-Extended "
-            "NOT blocked. Vulnerable to Gemini training data collection. "
-            "Common SEO-dilemma misconfiguration.",
-            signals)
+                       "Wildcard block + Google Search exception, but Google-Extended "
+                       "NOT blocked. Vulnerable to Gemini training data collection. "
+                       "Common SEO-dilemma misconfiguration.",
+                       signals)
 
     if layers["app_layer"] and layers["infra_layer"]:
         return _result("Tier 3", "Surgical",
-            "Explicitly blocks both APP-layer AI bots (GPTBot, ClaudeBot) "
-            "and INFRA-layer bots (CCBot, FacebookBot). Targeted and effective.",
-            signals)
+                       "Explicitly blocks both APP-layer AI bots (GPTBot, ClaudeBot) "
+                       "and INFRA-layer bots (CCBot, FacebookBot). Targeted and effective.",
+                       signals)
 
     if layers["app_layer"] and not layers["infra_layer"]:
         return _result("Tier 2", "Porous",
-            "Blocks visible AI bots (APP layer) but misses training "
-            "infrastructure bots (INFRA layer). Performative defence.",
-            signals)
+                       "Blocks visible AI bots (APP layer) but misses training "
+                       "infrastructure bots (INFRA layer). Performative defence.",
+                       signals)
 
     return _result("Tier 1", "Open",
-        "No AI-specific blocking detected. Fully accessible to all "
-        "AI crawlers and training data collectors.",
-        signals)
+                   "No AI-specific blocking detected. Fully accessible to all "
+                   "AI crawlers and training data collectors.",
+                   signals)
 
 
 def _result(tier, label, description, signals):

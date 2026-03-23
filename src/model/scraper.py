@@ -11,13 +11,13 @@ from tenacity import (
 
 logger = logging.getLogger(__name__)
 
-USER_AGENT = f"SCA-ResearchBot (Academic Thesis)"
+USER_AGENT = "SCA-ResearchBot (Academic Thesis)"
 TIMEOUT = 10    # seconds
 MAX_RETRIES = 3
 
 
-
 # FETCH
+
 
 @retry(
     stop=stop_after_attempt(MAX_RETRIES),
@@ -25,8 +25,6 @@ MAX_RETRIES = 3
     retry=retry_if_exception_type(RequestException)
 )
 def fetch_robots_txt(url):
-    
-
     # Step 1: Normalize — ensure trailing slash before urljoin
     if not url.endswith("/"):
         url += "/"
@@ -69,5 +67,7 @@ def fetch_robots_txt(url):
 
     except RequestException as e:
         error_code = f"ERROR_{type(e).__name__}"
-        logger.error(f"Network error fetching {robots_url}: {error_code} — {e}")
+        logger.error(
+            f"Network error fetching {robots_url}: {error_code} — {e}"
+            )
         return None, False, error_code

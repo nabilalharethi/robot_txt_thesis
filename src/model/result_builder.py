@@ -30,9 +30,8 @@ RESULT_COLUMNS = [
     "timestamp", "error_type",
 ]
 
-
-
 # BUILDERS
+
 
 def build_error_result(site, error_code):
     return {
@@ -65,7 +64,7 @@ def build_error_result(site, error_code):
 
 
 def build_success_result(site, classification, conflict, compliance,
-                          redirected, redirect_info):
+                         redirected, redirect_info):
     return {
         'name':             site['name'],
         'url':              site['url'],

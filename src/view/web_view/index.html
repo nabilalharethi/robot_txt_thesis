@@ -1,139 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>SCA -- Semantic Configuration Analyzer</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+<!-- Chart.js Library -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<style>
-:root{--bg:#0d0f0e;--surface:#141716;--surface2:#1c1f1d;--border:#2a2e2c;--accent:#00e5a0;--accent2:#00b37a;--text:#e8ede9;--muted:#6b7570;--danger:#ff5c5c;--warn:#ffb547;--info:#4da6ff;--mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;}
-*{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.6;}
-.layout{display:grid;grid-template-columns:260px 1fr;min-height:100vh;}
-.sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;}
-.sidebar-logo{padding:24px 20px 20px;border-bottom:1px solid var(--border);}
-.sidebar-logo .title{font-family:var(--mono);font-size:13px;color:var(--accent);letter-spacing:.12em;font-weight:500;}
-.sidebar-logo .sub{font-size:11px;color:var(--muted);margin-top:3px;}
-.nav{padding:16px 12px;flex:1;overflow-y:auto;}
-.nav-label{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;padding:0 8px;margin:16px 0 6px;}
-.nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;color:var(--muted);font-size:13px;transition:all .15s;border:none;background:none;width:100%;text-align:left;}
-.nav-item:hover{background:var(--surface2);color:var(--text);}
-.nav-item.active{background:rgba(0,229,160,.08);color:var(--accent);}
-.nav-item .icon{font-size:14px;width:18px;text-align:center;flex-shrink:0;}
-.sidebar-footer{padding:16px 20px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);font-family:var(--mono);}
-.main{display:flex;flex-direction:column;overflow-y:auto;}
-.page{display:none;padding:32px 36px;}
-.page.active{display:block;}
-.page-title{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;}
-.page-heading{font-size:22px;font-weight:300;color:var(--text);margin-bottom:28px;letter-spacing:-.02em;}
-.analyze-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:28px;max-width:680px;margin-bottom:24px;}
-.analyze-box h3{font-size:13px;font-weight:500;color:var(--text);margin-bottom:18px;}
-.field{margin-bottom:14px;}
-.field label{display:block;font-size:11px;color:var(--muted);font-family:var(--mono);letter-spacing:.06em;margin-bottom:5px;}
-.field input{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:6px;font-size:13px;font-family:var(--sans);outline:none;transition:border-color .15s;}
-.field input:focus{border-color:var(--accent);}
-.field input::placeholder{color:var(--muted);}
-.btn-primary{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#0d0f0e;border:none;padding:10px 22px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--sans);transition:background .15s;}
-.btn-primary:hover{background:var(--accent2);}
-.btn-primary:disabled{opacity:.5;cursor:not-allowed;}
-.btn-secondary{display:inline-flex;align-items:center;gap:8px;background:transparent;color:var(--text);border:1px solid var(--border);padding:9px 18px;border-radius:6px;font-size:13px;cursor:pointer;font-family:var(--sans);}
-.btn-secondary:hover{background:var(--surface2);}
-.spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
-@keyframes spin{to{transform:rotate(360deg);}}
-.error-msg{background:rgba(255,92,92,.08);border:1px solid rgba(255,92,92,.2);color:var(--danger);padding:14px 16px;border-radius:6px;font-size:13px;margin-top:12px;max-width:680px;line-height:1.7;}
-.info-msg{background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.2);color:var(--info);padding:12px 16px;border-radius:6px;font-size:13px;margin-top:12px;max-width:680px;}
-.result-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:24px;max-width:680px;animation:fadeIn .3s ease;}
-@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-.result-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:20px;padding-bottom:18px;border-bottom:1px solid var(--border);}
-.result-site-name{font-size:16px;font-weight:500;}
-.result-url{font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:2px;}
-.badge{display:inline-flex;align-items:center;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:500;font-family:var(--mono);letter-spacing:.04em;flex-shrink:0;}
-.badge-compliant{background:rgba(0,229,160,.12);color:var(--accent);border:1px solid rgba(0,229,160,.25);}
-.badge-partial{background:rgba(255,181,71,.12);color:var(--warn);border:1px solid rgba(255,181,71,.25);}
-.badge-nominal{background:rgba(255,181,71,.12);color:var(--warn);border:1px solid rgba(255,181,71,.25);}
-.badge-non_compliant{background:rgba(255,92,92,.12);color:var(--danger);border:1px solid rgba(255,92,92,.25);}
-.badge-error{background:rgba(100,100,100,.15);color:var(--muted);border:1px solid var(--border);}
-.tier-bar{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
-.tier-pip{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
-.tier-text{font-size:13px;color:var(--text);}
-.tier-desc{font-size:12px;color:var(--muted);margin-top:2px;}
-.score-bar-wrap{margin-bottom:16px;}
-.score-label{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:6px;}
-.score-track{background:var(--surface2);border-radius:3px;height:6px;overflow:hidden;}
-.score-fill{height:100%;border-radius:3px;transition:width .6s cubic-bezier(.4,0,.2,1);}
-.layers-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
-.layer-cell{background:var(--surface2);border-radius:6px;padding:10px 12px;border:1px solid var(--border);}
-.layer-name{font-size:10px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
-.layer-status{font-size:12px;font-weight:500;}
-.layer-effective{color:var(--accent);}
-.layer-ineffective{color:var(--danger);}
-.meaning-box{background:rgba(0,229,160,.05);border:1px solid rgba(0,229,160,.15);border-radius:8px;padding:16px;margin-top:16px;}
-.meaning-box h4{font-size:11px;font-family:var(--mono);color:var(--accent);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;}
-.meaning-box p{font-size:12px;color:var(--muted);line-height:1.7;}
-.meaning-box.warn{background:rgba(255,181,71,.05);border-color:rgba(255,181,71,.2);}
-.meaning-box.warn h4{color:var(--warn);}
-.meaning-box.danger{background:rgba(255,92,92,.05);border-color:rgba(255,92,92,.2);}
-.meaning-box.danger h4{color:var(--danger);}
-.conflicts-list{margin-top:14px;}
-.conflict-item{background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--warn);border-radius:0 6px 6px 0;padding:10px 14px;margin-bottom:8px;font-size:12px;}
-.conflict-item.high{border-left-color:var(--danger);}
-.conflict-type{font-family:var(--mono);color:var(--muted);font-size:10px;margin-bottom:3px;}
-.conflict-agent{color:var(--text);font-weight:500;}
-.conflict-detail{color:var(--muted);margin-top:4px;font-size:11px;}
-.metrics-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px;}
-.metric-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px 16px;}
-.m-label{font-size:10px;color:var(--muted);font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
-.m-value{font-size:26px;font-weight:300;font-family:var(--mono);}
-.m-sub{font-size:11px;color:var(--muted);margin-top:3px;}
-.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:28px;}
-.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px;}
-.chart-card h4{font-size:11px;font-family:var(--mono);color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px;}
-.legend-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;}
-.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);font-family:var(--mono);}
-.legend-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
-.results-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
-.table-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);}
-.table-header h4{font-size:12px;font-family:var(--mono);color:var(--muted);letter-spacing:.08em;text-transform:uppercase;}
-.filter-row{display:flex;gap:8px;}
-.filter-select{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:5px 10px;border-radius:5px;font-size:12px;font-family:var(--mono);outline:none;}
-table{width:100%;border-collapse:collapse;font-size:12px;}
-thead th{padding:10px 16px;text-align:left;font-size:10px;color:var(--muted);font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--border);background:var(--surface2);}
-tbody tr{border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;}
-tbody tr:last-child{border-bottom:none;}
-tbody tr:hover{background:var(--surface2);}
-tbody td{padding:10px 16px;color:var(--text);font-family:var(--mono);font-size:11px;}
-.name-col{font-family:var(--sans)!important;font-size:12px!important;font-weight:500!important;}
-.tier-pill{display:inline-block;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:500;font-family:var(--mono);}
-.tp5{background:rgba(214,64,69,.15);color:#ff8080;}
-.tp4b{background:rgba(58,134,255,.15);color:#80bfff;}
-.tp3{background:rgba(0,229,160,.15);color:var(--accent);}
-.tp1{background:rgba(107,117,112,.2);color:var(--muted);}
-.detail-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;}
-.detail-overlay.open{display:block;}
-.detail-panel{position:fixed;right:0;top:0;bottom:0;width:500px;background:var(--surface);border-left:1px solid var(--border);overflow-y:auto;padding:28px 24px;z-index:101;animation:slideIn .25s ease;}
-@keyframes slideIn{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
-.detail-close{position:absolute;top:18px;right:20px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;}
-.detail-close:hover{color:var(--text);}
-.about-section{max-width:720px;margin-bottom:40px;}
-.about-section h2{font-size:15px;font-weight:500;color:var(--text);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);}
-.about-section p{font-size:13px;color:var(--muted);line-height:1.8;margin-bottom:12px;}
-.about-section strong{color:var(--text);font-weight:500;}
-code{font-family:var(--mono);font-size:11px;background:var(--surface2);padding:1px 5px;border-radius:3px;color:var(--text);}
-.diff-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;}
-.diff-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px;}
-.diff-card h4{font-size:11px;font-family:var(--mono);color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
-.diff-card p{font-size:12px;color:var(--muted);line-height:1.7;}
-.diff-card.hl{border-color:rgba(0,229,160,.3);background:rgba(0,229,160,.04);}
-.diff-card.hl h4{color:var(--accent);}
-.empty-state{text-align:center;padding:60px 20px;color:var(--muted);}
-.empty-state .icon{font-size:36px;margin-bottom:12px;opacity:.4;}
-.status-table{width:100%;font-size:12px;border-collapse:collapse;}
-.status-table td{padding:10px 0;border-bottom:1px solid var(--border);vertical-align:top;}
-.status-table tr:last-child td{border-bottom:none;}
-.status-label{width:160px;font-family:var(--mono);font-weight:500;font-size:11px;}
-</style>
+<!-- External CSS -->
+<link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
 <div class="layout">
@@ -242,7 +119,7 @@ code{font-family:var(--mono);font-size:11px;background:var(--surface2);padding:1
       <div class="filter-row">
         <select class="filter-select" id="filter-tier" onchange="filterTable()">
           <option value="">All tiers</option>
-          <option>Tier 5</option><option>Tier 4b</option><option>Tier 3</option><option>Tier 1</option>
+          <option>Tier 5</option><option>Tier 4b</option><option>Tier 4a</option><option>Tier 3</option><option>Tier 2</option><option>Tier 1</option>
         </select>
         <select class="filter-select" id="filter-compliance" onchange="filterTable()">
           <option value="">All statuses</option>
@@ -329,7 +206,7 @@ code{font-family:var(--mono);font-size:11px;background:var(--surface2);padding:1
         <tr><td class="status-label" style="color:var(--accent)">COMPLIANT</td><td style="color:var(--muted)">All three bot layers blocked without internal contradictions. Valid machine-readable opt-out under EU AI Act Recital 105. AI training crawlers are legally required to respect this.</td></tr>
         <tr><td class="status-label" style="color:var(--warn)">NOMINAL</td><td style="color:var(--muted)">The site names AI bots (showing intent) but HIGH severity conflicts make blocking semantically ineffective. The <strong style="color:var(--text)">Enumeration Fallacy</strong> -- the site believes it is protected but is not. Binary tools would count this as compliant; the SCA does not.</td></tr>
         <tr><td class="status-label" style="color:var(--warn)">PARTIAL</td><td style="color:var(--muted)">Some layers blocked, not all. Score between 0.01 and 0.99. Partial compliance gap under Article 53(1)(c).</td></tr>
-        <tr><td class="status-label" style="color:var(--danger)">NON_COMPLIANT</td><td style="color:var(--muted)">No effective AI opt-out. All AI training collectors have full access. No reservation of rights exists under EU AI Act Recital 105.</td></tr>
+        <td class="status-label" style="color:var(--danger)">NON_COMPLIANT</td><td style="color:var(--muted)">No effective AI opt-out. All AI training collectors have full access. No reservation of rights exists under EU AI Act Recital 105.</td></tr>
       </table>
     </div>
 
@@ -424,196 +301,7 @@ code{font-family:var(--mono);font-size:11px;background:var(--surface2);padding:1
   </div>
 </div>
 
-<script>
-const API='';
-let _allResults=[];
-let _charts={};
+<script src="js/script.js"></script>
 
-function showPage(name,btn){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
-  document.getElementById('page-'+name).classList.add('active');
-  if(btn)btn.classList.add('active');
-}
-
-async function runSingleAnalysis(){
-  let url=document.getElementById('input-url').value.trim();
-  const name=document.getElementById('input-name').value.trim();
-  const group=document.getElementById('input-group').value.trim();
-  const btn=document.getElementById('btn-analyze');
-  const spin=document.getElementById('analyze-spinner');
-  const out=document.getElementById('single-result');
-  if(!url){out.innerHTML='<div class="error-msg">Please enter a URL.</div>';return;}
-  if(!url.startsWith('http'))url='https://'+url;
-  try{const u=new URL(url);url=u.origin;}catch(e){}
-  btn.disabled=true;spin.style.display='inline-block';
-  out.innerHTML='<div class="info-msg">Fetching robots.txt from '+url+' ...</div>';
-  try{
-    const resp=await fetch(API+'/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url,name,group})});
-    if(!resp.ok){const e=await resp.json().catch(()=>({error:'Server error '+resp.status}));throw new Error(e.error||'Server error '+resp.status);}
-    const data=await resp.json();
-    if(data.error)throw new Error(data.error);
-    out.innerHTML=renderResultCard(data);
-  }catch(e){
-    out.innerHTML=`<div class="error-msg"><strong>Could not fetch robots.txt.</strong><br><br>${e.message}<br><br><span style="font-size:11px">Common causes: the site blocks automated requests, has no robots.txt, or the server timed out. Try just the homepage domain, e.g. <code>https://www.bbc.co.uk</code> -- do not include paths like /news.</span></div>`;
-  }finally{btn.disabled=false;spin.style.display='none';}
-}
-document.getElementById('input-url').addEventListener('keydown',e=>{if(e.key==='Enter')runSingleAnalysis();});
-
-function renderResultCard(r){
-  if(r.strategy==='ERROR'){
-    const reason=r.error_type||'unknown';
-    const hints={'404':'The site has no robots.txt file at /robots.txt.','timeout':'The server did not respond in time.','SSL':'SSL/TLS certificate issue on the remote server.'};
-    const hint=Object.entries(hints).find(([k])=>reason.includes(k))?.[1]||'The server may be blocking automated requests or the domain is unreachable.';
-    return`<div class="result-card"><div class="result-header"><div><div class="result-site-name">${r.name||r.url}</div><div class="result-url">${r.url}</div></div><span class="badge badge-error">ERROR</span></div><p style="color:var(--danger);font-size:13px;margin-bottom:8px">Failed: ${reason}</p><p style="color:var(--muted);font-size:12px">${hint}</p></div>`;
-  }
-  const cs=(r.compliance_status||'').toLowerCase();
-  const score=r.compliance_score||0;
-  const pct=Math.round(score*100);
-  const sc=pct>=80?'var(--accent)':pct>=40?'var(--warn)':'var(--danger)';
-  const tc={'Tier 5':'#ff5c5c','Tier 4b':'#4da6ff','Tier 4a':'#8338ec','Tier 3':'#00e5a0','Tier 2':'#fb8500','Tier 1':'#6b7570'}[r.strategy_tier]||'#6b7570';
-  const la=r.layer_analysis||r.compliance?.layer_analysis||{};
-  const layers=['app_layer','infra_layer','google_ai'].map(k=>{
-    const l=la[k]||{};
-    const lbl={app_layer:'APP LAYER &middot; 35%',infra_layer:'INFRA LAYER &middot; 45%',google_ai:'GOOGLE AI &middot; 20%'}[k];
-    return`<div class="layer-cell"><div class="layer-name">${lbl}</div><div class="layer-status ${l.effective?'layer-effective':'layer-ineffective'}">${l.effective?'&#10003; Blocked':'&#10007; Exposed'}</div>${l.conflict_undermined?'<div style="font-size:10px;color:var(--danger);margin-top:2px">&#8593; Conflict undermines</div>':''}</div>`;
-  }).join('');
-
-  const meanings={
-    COMPLIANT:{cls:'',txt:'This site has a valid, effective machine-readable opt-out under EU AI Act Recital 105 / Article 53(1)(c). All three bot layers are blocked with no internal contradictions. AI training data providers are legally obliged to respect this configuration.'},
-    NOMINAL:{cls:'warn',txt:'<strong>Enumeration Fallacy detected.</strong> This site names AI bots (showing intent to block) but HIGH severity directive conflicts -- a wildcard <code>Allow: /</code> overriding per-bot <code>Disallow: /</code> entries -- make the blocking semantically ineffective. Binary parsers would count this site as protected. The SCA shows it is not.'},
-    PARTIAL:{cls:'warn',txt:'This site blocks some but not all bot layers. A partial opt-out exists but the missing layers are a compliance gap under EU AI Act Article 53(1)(c). The score reflects exactly which layers are covered.'},
-    NON_COMPLIANT:{cls:'danger',txt:'No effective AI opt-out. All AI training data collectors have full access. No reservation of rights exists under EU AI Act Recital 105. The site has either no AI entries in robots.txt or the file is open by default.'},
-  };
-  const m=meanings[r.compliance_status]||{cls:'',txt:''};
-  const conflicts=(r.conflicts||[]).slice(0,8).map(c=>`<div class="conflict-item ${c.severity==='HIGH'?'high':''}"><div class="conflict-type">${c.severity} &middot; ${c.type}</div><div class="conflict-agent">${c.affected_agent}</div><div class="conflict-detail">${c.detail||''}</div></div>`).join('');
-
-  return`<div class="result-card">
-    <div class="result-header">
-      <div>
-        <div class="result-site-name">${r.name||r.url}</div>
-        <div class="result-url">${r.url}</div>
-        ${r.redirected?`<div style="font-size:10px;color:var(--warn);margin-top:3px;font-family:var(--mono)">&#8611; redirected to ${r.redirect_target}</div>`:''}
-      </div>
-      <span class="badge badge-${cs}">${r.compliance_status||'--'}</span>
-    </div>
-    <div class="tier-bar">
-      <span class="tier-pip" style="background:${tc}"></span>
-      <div><div class="tier-text">${r.strategy||r.strategy_tier}</div><div class="tier-desc">${r.tier_description||r.tier_label||''}</div></div>
-    </div>
-    <div class="score-bar-wrap">
-      <div class="score-label"><span>Compliance score</span><span style="color:${sc}">${pct}%</span></div>
-      <div class="score-track"><div class="score-fill" style="width:${pct}%;background:${sc}"></div></div>
-    </div>
-    <div class="layers-grid">${layers}</div>
-    ${m.txt?`<div class="meaning-box ${m.cls}"><h4>What this means</h4><p>${m.txt}</p></div>`:''}
-    ${(r.conflict_count||0)>0?`<div class="conflicts-list"><div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin:16px 0 8px;letter-spacing:.06em">CONFLICTS (${r.conflict_count})</div>${conflicts}${(r.conflicts||[]).length>8?`<div style="font-size:11px;color:var(--muted);text-align:center;padding:8px">... and ${r.conflicts.length-8} more</div>`:''}</div>`:'<div style="margin-top:14px;font-size:12px;color:var(--accent);font-family:var(--mono)">&#10003; No directive conflicts detected</div>'}
-    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);font-family:var(--mono)">${r.eu_ai_act_ref||r.compliance?.eu_ai_act_ref||'EU AI Act Recital 105 / Article 53(1)(c)'}</div>
-  </div>`;
-}
-
-async function runBatchAnalysis(){
-  const btn=document.getElementById('btn-batch');
-  const spin=document.getElementById('batch-spinner');
-  btn.disabled=true;spin.style.display='inline-block';
-  try{
-    const resp=await fetch(API+'/analyze-batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({targets_file:'targets.json'})});
-    const data=await resp.json();
-    if(data.error)throw new Error(data.error);
-    _allResults=data.results||[];
-    renderTable(_allResults);
-    renderDashboard(_allResults,data.metrics||{});
-  }catch(e){alert('Batch error: '+e.message);}
-  finally{btn.disabled=false;spin.style.display='none';}
-}
-
-function loadDemoData(){
-  const M={total_sites:81,compliant:69,partial:0,nominal:2,non_compliant:10,compliance_gap:12,gap_percentage:14.81,intended_rate:87.65,effective_rate:85.19,enumeration_fallacy_count:2};
-  const R=[
-    {name:'Dagens Nyheter',group:'Bonnier',country:'SE',strategy_tier:'Tier 3',compliance_status:'COMPLIANT',compliance_score:1.0,conflict_count:1,tier_label:'Surgical'},
-    {name:'Expressen',group:'Bonnier',country:'SE',strategy_tier:'Tier 3',compliance_status:'COMPLIANT',compliance_score:1.0,conflict_count:0,tier_label:'Surgical'},
-    {name:'Helsingborgs Dagblad',group:'Bonnier',country:'SE',strategy_tier:'Tier 5',compliance_status:'COMPLIANT',compliance_score:1.0,conflict_count:0,tier_label:'True Nuclear'},
-    {name:'Mitti Stockholm',group:'Bonnier',country:'SE',strategy_tier:'Tier 1',compliance_status:'NON_COMPLIANT',compliance_score:0.0,conflict_count:0,tier_label:'Open'},
-    {name:'Aftonbladet',group:'Schibsted',country:'SE',strategy_tier:'Tier 5',compliance_status:'NOMINAL',compliance_score:0.0,conflict_count:35,tier_label:'True Nuclear'},
-    {name:'Svenska Dagbladet',group:'Schibsted',country:'SE',strategy_tier:'Tier 5',compliance_status:'NOMINAL',compliance_score:0.0,conflict_count:35,tier_label:'True Nuclear'},
-    {name:'Omni',group:'Schibsted',country:'SE',strategy_tier:'Tier 1',compliance_status:'NON_COMPLIANT',compliance_score:0.0,conflict_count:0,tier_label:'Open'},
-    {name:'Klart.se',group:'Schibsted',country:'SE',strategy_tier:'Tier 1',compliance_status:'NON_COMPLIANT',compliance_score:0.0,conflict_count:0,tier_label:'Open'},
-    {name:'Tv.nu',group:'Schibsted',country:'SE',strategy_tier:'Tier 3',compliance_status:'COMPLIANT',compliance_score:1.0,conflict_count:0,tier_label:'Surgical'},
-    {name:'Norrköpings Tidningar',group:'NTM',country:'SE',strategy_tier:'Tier 4b',compliance_status:'COMPLIANT',compliance_score:1.0,conflict_count:24,tier_label:'Secured Nuclear'},
-    {name:'Upsala Nya Tidning',group:'NTM',country:'SE',strategy_tier:'Tier 4b',compliance_status:'COMPLIANT',compliance_score:1.0,conflict_count:24,tier_label:'Secured Nuclear'},
-    {name:'Göteborgs-Posten',group:'Stampen',country:'SE',strategy_tier:'Tier 5',compliance_status:'COMPLIANT',compliance_score:1.0,conflict_count:0,tier_label:'True Nuclear'},
-    {name:'Jönköpings-Posten',group:'Hall Media',country:'SE',strategy_tier:'Tier 5',compliance_status:'COMPLIANT',compliance_score:1.0,conflict_count:0,tier_label:'True Nuclear'},
-    {name:'SVT Nyheter',group:'Public Service',country:'SE',strategy_tier:'Tier 3',compliance_status:'COMPLIANT',compliance_score:1.0,conflict_count:0,tier_label:'Surgical'},
-    {name:'Sveriges Radio',group:'Public Service',country:'SE',strategy_tier:'Tier 3',compliance_status:'COMPLIANT',compliance_score:1.0,conflict_count:0,tier_label:'Surgical'},
-    {name:'UR',group:'Public Service',country:'SE',strategy_tier:'Tier 1',compliance_status:'NON_COMPLIANT',compliance_score:0.0,conflict_count:0,tier_label:'Open'},
-    {name:'Dagens ETC',group:'Independent',country:'SE',strategy_tier:'Tier 1',compliance_status:'NON_COMPLIANT',compliance_score:0.0,conflict_count:0,tier_label:'Open'},
-    {name:'Samnytt',group:'Independent',country:'SE',strategy_tier:'Tier 1',compliance_status:'NON_COMPLIANT',compliance_score:0.0,conflict_count:0,tier_label:'Open'},
-    {name:'Norra Skane',group:'Independent',country:'SE',strategy_tier:'Tier 3',compliance_status:'COMPLIANT',compliance_score:1.0,conflict_count:0,tier_label:'Surgical'},
-  ];
-  _allResults=R;renderTable(R);renderDashboard(R,M);
-}
-
-function renderTable(results){
-  document.getElementById('results-empty').style.display='none';
-  document.getElementById('results-table-wrap').style.display='block';
-  document.getElementById('table-count').textContent=results.filter(r=>r.strategy!=='ERROR').length;
-  fillTable(results);
-}
-function fillTable(results){
-  const tbody=document.getElementById('results-tbody');
-  tbody.innerHTML='';
-  results.forEach(r=>{
-    if(r.strategy==='ERROR')return;
-    const tr=document.createElement('tr');
-    tr.onclick=()=>openDetail(r);
-    const tier=r.strategy_tier||'';
-    const tc=tier==='Tier 5'?'tp5':tier==='Tier 4b'?'tp4b':tier==='Tier 3'?'tp3':'tp1';
-    const cs=(r.compliance_status||'').toLowerCase();
-    const score=Math.round((r.compliance_score||0)*100);
-    tr.innerHTML=`<td class="name-col">${r.name}</td><td>${r.group||'--'}</td><td>${r.country||'--'}</td><td><span class="tier-pill ${tc}">${tier}</span></td><td><span class="badge badge-${cs}" style="font-size:10px">${r.compliance_status||'--'}</span></td><td style="color:${(r.conflict_count||0)>0?'var(--warn)':'var(--muted)'}">${r.conflict_count??'--'}</td><td style="color:${score>=80?'var(--accent)':score>0?'var(--warn)':'var(--danger)'}">${score}%</td>`;
-    tbody.appendChild(tr);
-  });
-}
-function filterTable(){
-  const tier=document.getElementById('filter-tier').value;
-  const comp=document.getElementById('filter-compliance').value;
-  fillTable(_allResults.filter(r=>(!tier||r.strategy_tier===tier)&&(!comp||r.compliance_status===comp)));
-}
-function openDetail(r){document.getElementById('detail-content').innerHTML=renderResultCard(r);document.getElementById('detail-overlay').classList.add('open');}
-function closeDetail(){document.getElementById('detail-overlay').classList.remove('open');}
-
-function renderDashboard(results,m){
-  document.getElementById('dashboard-empty').style.display='none';
-  document.getElementById('dashboard-content').style.display='block';
-  const total=m.total_sites||results.length;
-  const cp=total?Math.round((m.compliant/total)*100):0;
-  document.getElementById('metrics-row').innerHTML=`
-    <div class="metric-card"><div class="m-label">Sites analyzed</div><div class="m-value">${total}</div></div>
-    <div class="metric-card"><div class="m-label">Compliant</div><div class="m-value" style="color:var(--accent)">${cp}%</div><div class="m-sub">${m.compliant||0} / ${total}</div></div>
-    <div class="metric-card"><div class="m-label">Compliance gap</div><div class="m-value" style="color:var(--danger)">${(m.gap_percentage||0).toFixed(1)}%</div><div class="m-sub">${m.compliance_gap||0} sites</div></div>
-    <div class="metric-card"><div class="m-label">Enum. Fallacy</div><div class="m-value" style="color:var(--warn)">${m.enumeration_fallacy_count||0}</div><div class="m-sub">NOMINAL sites</div></div>`;
-  const gc='rgba(255,255,255,0.05)';const tc='#6b7570';
-  const tierC={};results.forEach(r=>{if(r.strategy_tier&&r.strategy_tier!=='ERROR')tierC[r.strategy_tier]=(tierC[r.strategy_tier]||0)+1;});
-  const tclr={'Tier 5':'#ff5c5c','Tier 4b':'#4da6ff','Tier 4a':'#8338ec','Tier 3':'#00e5a0','Tier 2':'#fb8500','Tier 1':'#6b7570'};
-  if(_charts.tier)_charts.tier.destroy();
-  _charts.tier=new Chart(document.getElementById('chart-tier'),{type:'doughnut',data:{labels:Object.keys(tierC),datasets:[{data:Object.values(tierC),backgroundColor:Object.keys(tierC).map(t=>tclr[t]||'#444'),borderWidth:2,borderColor:'#0d0f0e'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
-  const grps={};results.forEach(r=>{if(!r.group)return;if(!grps[r.group])grps[r.group]={c:0,n:0,nc:0};if(r.compliance_status==='COMPLIANT')grps[r.group].c++;else if(r.compliance_status==='NOMINAL')grps[r.group].n++;else if(r.compliance_status==='NON_COMPLIANT')grps[r.group].nc++;});
-  const gl=Object.keys(grps);
-  if(_charts.group)_charts.group.destroy();
-  _charts.group=new Chart(document.getElementById('chart-group'),{type:'bar',data:{labels:gl,datasets:[{label:'Compliant',data:gl.map(g=>grps[g].c),backgroundColor:'#00e5a0'},{label:'Nominal',data:gl.map(g=>grps[g].n),backgroundColor:'#ffb547'},{label:'Non-compliant',data:gl.map(g=>grps[g].nc),backgroundColor:'#ff5c5c'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,ticks:{color:tc,font:{size:10}},grid:{color:gc}},y:{stacked:true,ticks:{color:tc},grid:{color:gc}}}}});
-  if(_charts.comp)_charts.comp.destroy();
-  _charts.comp=new Chart(document.getElementById('chart-compliance'),{type:'doughnut',data:{labels:['Compliant','Nominal','Non-compliant'],datasets:[{data:[m.compliant||69,m.nominal||2,m.non_compliant||10],backgroundColor:['#00e5a0','#ffb547','#ff5c5c'],borderWidth:2,borderColor:'#0d0f0e'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
-  if(_charts.intent)_charts.intent.destroy();
-  _charts.intent=new Chart(document.getElementById('chart-intent'),{type:'bar',data:{labels:['Intended opt-out','Effective opt-out'],datasets:[{data:[m.intended_rate||87.65,m.effective_rate||85.19],backgroundColor:['#4da6ff','#00e5a0'],borderRadius:4,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{max:100,ticks:{color:tc,callback:v=>v+'%'},grid:{color:gc}},y:{ticks:{color:tc,font:{size:11}},grid:{display:false}}}}});
-}
-
-function initThesisCharts(){
-  new Chart(document.getElementById('thesis-tier'),{type:'bar',data:{labels:['Tier 3 -- Surgical','Tier 5 -- True Nuclear','Tier 4b -- Secured Nuclear','Tier 1 -- Open'],datasets:[{data:[30,27,14,10],backgroundColor:['#00e5a0','#ff5c5c','#4da6ff','#6b7570'],borderRadius:4,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6b7570',font:{size:11}},grid:{color:'rgba(255,255,255,0.05)'}},y:{ticks:{color:'#e8ede9',font:{size:12}},grid:{display:false}}}}});
-  new Chart(document.getElementById('thesis-conflicts'),{type:'bar',data:{labels:['Aftonbladet','Svenska Dagbladet','NTM (14 sites)','Dagens Nyheter'],datasets:[{label:'HIGH',data:[35,35,0,0],backgroundColor:'rgba(255,92,92,.7)',borderRadius:3},{label:'MEDIUM',data:[0,0,24,0],backgroundColor:'rgba(255,181,71,.7)',borderRadius:3},{label:'LOW',data:[0,0,0,1],backgroundColor:'rgba(107,117,112,.5)',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,ticks:{color:'#e8ede9',font:{size:12}},grid:{display:false}},y:{stacked:true,ticks:{color:'#6b7570'},grid:{color:'rgba(255,255,255,0.05)'}}}}});
-  new Chart(document.getElementById('thesis-compliance'),{type:'doughnut',data:{labels:['Compliant (69)','Non-compliant (10)','Nominal (2)'],datasets:[{data:[69,10,2],backgroundColor:['#00e5a0','#ff5c5c','#ffb547'],borderWidth:3,borderColor:'#0d0f0e'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},cutout:'65%'}});
-  new Chart(document.getElementById('thesis-gap-bar'),{type:'bar',data:{labels:['Intended opt-out (87.65%)','Effective opt-out (85.19%)'],datasets:[{data:[87.65,85.19],backgroundColor:['rgba(77,166,255,.6)','rgba(0,229,160,.7)'],borderRadius:4,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{max:100,ticks:{color:'#6b7570',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.05)'}},y:{ticks:{color:'#e8ede9',font:{size:12}},grid:{display:false}}}}});
-}
-initThesisCharts();
-</script>
 </body>
 </html>
