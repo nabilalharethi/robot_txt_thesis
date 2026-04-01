@@ -1,9 +1,16 @@
 """
 compliance.py — EU AI Act Compliance Gap Analyzer — RQ3
+
+RFC 9309 fix: _wildcard_covers_layer now correctly returns False for any bot
+that has its own named section, because the wildcard is irrelevant for that bot
+regardless of what the named section contains.
 """
 
 import logging
-from src.model.classifier import BOTS, _parse_sections, _is_fully_blocked, _is_fully_allowed
+from src.model.classifier import (
+    BOTS, _parse_sections, _is_fully_blocked, _is_fully_allowed,
+    _NON_RESETTING_DIRECTIVES,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +22,10 @@ LAYER_WEIGHTS = {
 
 
 def _layer_effectively_blocked(sections, bot_list):
+    """
+    A bot is effectively blocked by a named section if that section has
+    Disallow: / with no Allow: / of equal or greater specificity.
+    """
     for bot in bot_list:
         if _is_fully_blocked(sections.get(bot.lower(), [])):
             return True
@@ -22,13 +33,24 @@ def _layer_effectively_blocked(sections, bot_list):
 
 
 def _wildcard_covers_layer(sections, bot_list):
+    """
+    Returns True if the wildcard section blocks all bots in bot_list AND
+    none of those bots have their own named section (which would replace
+    the wildcard per RFC 9309).
+        The wildcard is only relevant for bots that do not have their own section.
+        If a bot has its own section, the wildcard does not apply to it at all,
+        regardless of what the wildcard contains. This is a critical fix to ensure
+        we do not incorrectly credit the wildcard for blocking bots that have
+        their own sections.
+    """
     wildcard = sections.get("*", [])
     if not _is_fully_blocked(wildcard):
         return False
 
     for bot in bot_list:
-        bot_directives = sections.get(bot.lower(), [])
-        if bot_directives and _is_fully_allowed(bot_directives):
+        bot_lower = bot.lower()
+        # If the bot has ANY named section, the wildcard is irrelevant for it.
+        if bot_lower in sections:
             return False
 
     return True
@@ -64,7 +86,6 @@ def analyze_compliance(content, classification_result, conflict_result):
             "direct_block":        direct_block,
             "wildcard_cover":      wildcard_cover,
             "conflict_undermined": undermined,
-            #"bots":                bot_list,
         }
 
     score = round(sum(

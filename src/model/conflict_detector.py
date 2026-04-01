@@ -1,5 +1,23 @@
 """
 conflict_detector.py — Directive Conflict Detector — RQ2
+
+RFC 9309 clarifications applied:
+  1. WILDCARD_OVERRIDE: A named bot section replacing the wildcard is NOT an
+     RFC violation — it is how the spec is designed to work. This detector
+     flags it as an OPERATOR INTENT MISMATCH: the site operator likely
+     intended the wildcard to protect against all bots, but named Allow: /
+     entries correctly supersede the wildcard per RFC 9309. This gap between
+     intent and effect is the Enumeration Fallacy.
+
+  2. ORDERING_VIOLATION renamed to PARTIAL_BLOCK_WITH_ALLOWS: RFC 9309 uses
+     specificity, not order. A Disallow: / + Allow: /public is valid and
+     intentional (block root, allow specific path). This is only flagged when
+     the Allow paths are overly broad (e.g. Allow: /) or when the combination
+     is demonstrably paradoxical.
+
+  3. ALLOW_DISALLOW_CONFLICT: Only flag when SAME path appears in both Allow
+     and Disallow (genuine same-specificity conflict). A Disallow: / +
+     Allow: /news is NOT a conflict — it is correct specificity-based override.
 """
 
 import logging
@@ -7,11 +25,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 CONFLICT_TYPES = {
-    "WILDCARD_OVERRIDE":       "Wildcard Allow overrides specific bot block",
-    "DUPLICATE_SECTION":       "Same User-agent declared in multiple sections",
-    "ALLOW_DISALLOW_CONFLICT": "Allow and Disallow target same path in one section",
-    "ORDERING_VIOLATION":      "Disallow: / combined with specific Allow rules",
-    "EMPTY_DISALLOW_CONFLICT": "Empty Disallow: (allow all) conflicts with blocking rules",
+    "WILDCARD_OVERRIDE":        "Named bot Allow: / overrides wildcard Disallow: /",
+    "DUPLICATE_SECTION":        "Same User-agent declared in multiple sections",
+    "ALLOW_DISALLOW_CONFLICT":  "Allow and Disallow target identical path in one section",
+    "PARTIAL_BLOCK_WITH_ALLOWS": "Disallow: / combined with broad Allow rules",
+    "EMPTY_DISALLOW_CONFLICT":  "Empty Disallow: (allow all) conflicts with blocking rules",
 }
 
 
@@ -20,26 +38,31 @@ def _parse_raw_sections(lines):
     current = None
 
     for i, line in enumerate(lines):
-        stripped  = line.strip().lower()
-        if not stripped  or stripped .startswith("#"):
+        stripped = line.strip().lower()
+        if not stripped or stripped.startswith("#"):
             continue
 
-        if stripped .startswith("user-agent:"):
-            agent = stripped .split(":", 1)[1].strip()
+        if stripped.startswith("user-agent:"):
+            agent = stripped.split(":", 1)[1].strip()
             if current and not current["directives"]:
                 current["agents"].append(agent)
             else:
-                current = {"agents": [agent], "directives": [], "line_start":i}
+                current = {"agents": [agent], "directives": [], "line_start": i}
                 sections.append(current)
 
-        elif stripped .startswith(("disallow:", "allow:", "crawl-delay:")):
+        elif stripped.startswith(("disallow:", "allow:", "crawl-delay:")):
             if current is not None:
                 current["directives"].append({"text": stripped, "line": i})
+
+        elif stripped.startswith(("sitemap:", "host:")):
+            # Non-resetting known directives — do NOT break current section
+            pass
 
         else:
             current = None
 
     return sections
+
 
 def _path(directive):
     if isinstance(directive, dict):
@@ -50,6 +73,7 @@ def _path(directive):
         return ""
     return text.split(":", 1)[1].strip() if ":" in text else ""
 
+
 def _dtype(directive):
     if isinstance(directive, dict):
         text = directive["text"]
@@ -59,19 +83,33 @@ def _dtype(directive):
         return ""
     return text.split(":")[0].strip().lower()
 
+
 def _dline(directive):
     if isinstance(directive, dict):
         return directive.get("line")
     return None
 
+
 def _detect_wildcard_override(sections):
+    """
+    Detects the core Enumeration Fallacy mechanism:
+      User-agent: *
+      Disallow: /
+      User-agent: SomeBot
+      Allow: /          ← this cancels the wildcard for SomeBot (RFC 9309)
+
+    This is NOT an RFC violation. It is correct RFC behaviour. The operator
+    intent is to block all bots, but the named Allow: / correctly overrides
+    the wildcard per the spec. We flag this as a HIGH severity OPERATOR
+    INTENT MISMATCH — the configuration looks protective but is not for
+    the explicitly named bots.
+    """
     conflicts = []
 
-    # Look for wildcard Disallow: / (the block we want to protect)
     wildcard_section = next((s for s in sections if "*" in s["agents"]), None)
     if not wildcard_section:
         return conflicts
-    
+
     has_wildcard_disallow = any(
         _dtype(d) == "disallow" and _path(d) == "/"
         for d in wildcard_section["directives"]
@@ -79,8 +117,6 @@ def _detect_wildcard_override(sections):
     if not has_wildcard_disallow:
         return conflicts
 
-    # Now find per-bot sections that re-grant access with Allow: /
-    # This is the Enumeration Fallacy — wildcard block cancelled by named Allow
     for s in sections:
         if "*" in s["agents"]:
             continue
@@ -94,10 +130,14 @@ def _detect_wildcard_override(sections):
                         "severity":       "HIGH",
                         "line_number":    _dline(d),
                         "detail": (
-                            f"Agent '{agent}' has Allow: / at line {_dline(d)+1 if _dline(d) is not None else '?'} "
-                            f"which cancels the wildcard Disallow: / under RFC 9309. "
-                            f"The wildcard block appears protective but is semantically void "
-                            f"for this agent — core Enumeration Fallacy mechanism."
+                            f"Agent '{agent}' has Allow: / at line "
+                            f"{_dline(d)+1 if _dline(d) is not None else '?'} "
+                            f"which — per RFC 9309 — completely supersedes the "
+                            f"wildcard Disallow: / for this agent. The config looks "
+                            f"protective but '{agent}' has full access. This is the "
+                            f"Enumeration Fallacy: the operator intended the wildcard "
+                            f"to protect against all bots, but named exceptions work "
+                            f"the opposite way."
                         ),
                     })
 
@@ -130,11 +170,26 @@ def _detect_duplicate_sections(sections):
 
 
 def _detect_allow_disallow_conflict(sections):
+    """
+    Flags only IDENTICAL paths in both Allow and Disallow within the SAME
+    section. Per RFC 9309, equal-length paths → Allow wins. This is only
+    a conflict if both rules exist for the exact same path (same specificity),
+    since the Allow will silently win.
+
+    NOT flagged: Disallow: / + Allow: /news — this is correct specificity
+    override, not a conflict. /news is longer (more specific) than /, so
+    Allow: /news wins for /news/* and Disallow: / applies elsewhere. This
+    is standard and intentional robots.txt practice.
+    """
     conflicts = []
 
     for s in sections:
-        disallows = {_path(d): _dline(d) for d in s["directives"] if _dtype(d) == "disallow" and _path(d)}
-        allows = {_path(d): _dline(d) for d in s["directives"] if _dtype(d) == "allow" and _path(d)}
+        disallows = {_path(d): _dline(d) for d in s["directives"]
+                     if _dtype(d) == "disallow" and _path(d)}
+        allows = {_path(d): _dline(d) for d in s["directives"]
+                  if _dtype(d) == "allow" and _path(d)}
+
+        # Only flag IDENTICAL paths (same specificity → Allow wins silently)
         overlap = set(disallows.keys()) & set(allows.keys())
         for path in overlap:
             for agent in s["agents"]:
@@ -146,34 +201,54 @@ def _detect_allow_disallow_conflict(sections):
                     "line_number":    allows[path],
                     "detail": (
                         f"Section at line {s['line_start']} has both "
-                        f"Allow: {path} and Disallow: {path}. "
-                        f"RFC 9309 §2.2.2 — Allow wins, contrary to operator intent."
+                        f"Allow: {path} and Disallow: {path} for agent '{agent}'. "
+                        f"RFC 9309 §2.2.2: equal-length paths → Allow wins. "
+                        f"The Disallow is silently ignored. If the intent is to "
+                        f"block this path, remove the Allow."
                     ),
                 })
 
     return conflicts
 
 
-def _detect_ordering_violation(sections):
+def _detect_partial_block_with_broad_allows(sections):
+    """
+    Replaces the old ORDERING_VIOLATION detector.
+
+    Flags: Disallow: / + Allow: / in the SAME section for the same agent.
+    This is a genuine paradox (equal-specificity, Allow wins → agent not blocked).
+
+    NOT flagged: Disallow: / + Allow: /specific-path — this is correct and
+    intentional (block all except specific path).
+
+    Severity is LOW because the operator may intend to selectively allow
+    certain paths while blocking the rest — this pattern is valid robots.txt
+    practice when the Allow path is more specific than /.
+    """
     conflicts = []
 
     for s in sections:
-        has_root_disallow = any(_dtype(d) == "disallow" and _path(d) == "/" for d in s["directives"])
-        specific_allows   = [d for d in s["directives"] if _dtype(d) == "allow" and len(_path(d)) > 1]
+        has_root_disallow = any(
+            _dtype(d) == "disallow" and _path(d) == "/"
+            for d in s["directives"]
+        )
+        # Only flag Allow: / specifically (equal-specificity to Disallow: /)
+        root_allows = [d for d in s["directives"]
+                       if _dtype(d) == "allow" and _path(d) == "/"]
 
-        if has_root_disallow and specific_allows:
+        if has_root_disallow and root_allows:
             for agent in s["agents"]:
                 conflicts.append({
-                    "type":           "ORDERING_VIOLATION",
-                    "description":    CONFLICT_TYPES["ORDERING_VIOLATION"],
+                    "type":           "PARTIAL_BLOCK_WITH_ALLOWS",
+                    "description":    CONFLICT_TYPES["PARTIAL_BLOCK_WITH_ALLOWS"],
                     "affected_agent": agent,
-                    "severity":       "LOW",
+                    "severity":       "HIGH",
                     "line_number":    s["line_start"],
                     "detail": (
-                        f"Section at line {s['line_start']} has Disallow: / "
-                        f"with specific Allow rules: "
-                        f"{[_path(a) for a in specific_allows]}. "
-                        f"RFC 9309 uses specificity not order — verify intent."
+                        f"Section at line {s['line_start']} has both Disallow: / "
+                        f"and Allow: / for agent '{agent}'. These have equal "
+                        f"specificity — RFC 9309 says Allow wins, so the agent "
+                        f"is NOT blocked despite the Disallow: /."
                     ),
                 })
 
@@ -181,11 +256,24 @@ def _detect_ordering_violation(sections):
 
 
 def _detect_empty_disallow_conflict(sections):
+    """
+    Empty Disallow: (means allow all) mixed with real Disallow rules.
+    Per RFC 9309, an empty Disallow means the agent is allowed everywhere.
+    If a section has both empty Disallow and non-empty Disallows, the empty
+    one is contradictory — RFC-compliant crawlers treat this as allowed
+    (the most permissive interpretation wins in most implementations).
+    """
     conflicts = []
 
     for s in sections:
-        has_empty = any(_dtype(d) == "disallow" and _path(d) == "" for d in s["directives"])
-        has_real  = any(_dtype(d) == "disallow" and _path(d) != "" for d in s["directives"])
+        has_empty = any(
+            _dtype(d) == "disallow" and _path(d) == ""
+            for d in s["directives"]
+        )
+        has_real = any(
+            _dtype(d) == "disallow" and _path(d) != ""
+            for d in s["directives"]
+        )
 
         if has_empty and has_real:
             for agent in s["agents"]:
@@ -198,8 +286,9 @@ def _detect_empty_disallow_conflict(sections):
                     "detail": (
                         f"Section at line {s['line_start']} contains both "
                         f"Disallow: (empty = allow all) and specific Disallow "
-                        f"rules. Empty Disallow nullifies blocking intent in "
-                        f"RFC-compliant crawlers."
+                        f"rules for agent '{agent}'. Empty Disallow nullifies "
+                        f"all blocking intent in RFC-compliant crawlers — "
+                        f"the agent has full access."
                     ),
                 })
 
@@ -214,7 +303,7 @@ def detect_conflicts(content):
     all_conflicts.extend(_detect_wildcard_override(sections))
     all_conflicts.extend(_detect_duplicate_sections(sections))
     all_conflicts.extend(_detect_allow_disallow_conflict(sections))
-    all_conflicts.extend(_detect_ordering_violation(sections))
+    all_conflicts.extend(_detect_partial_block_with_broad_allows(sections))
     all_conflicts.extend(_detect_empty_disallow_conflict(sections))
 
     severity_counts = {"HIGH": 0, "MEDIUM": 0, "LOW": 0}
@@ -240,7 +329,8 @@ def detect_conflicts(content):
         "conflict_types":  conflict_types,
         "summary":         summary,
     }
-    
+
+
 def build_line_map(content):
     from src.model.classifier import BOTS
     all_ai_bots = set(
@@ -254,11 +344,10 @@ def build_line_map(content):
 
     for i, raw in enumerate(lines):
         stripped = raw.strip()
-        lowered  = stripped.lower()
+        lowered = stripped.lower()
 
         if not stripped or stripped.startswith("#"):
             line_map[i] = {"type": "comment", "relevant": False, "severity": "info"}
-            # blank lines do NOT reset agent context per RFC 9309
             continue
 
         if lowered.startswith("user-agent:"):
@@ -284,19 +373,17 @@ def build_line_map(content):
         elif lowered.startswith("allow:"):
             path = lowered.split(":", 1)[1].strip()
             relevant = any(a == "*" or a in all_ai_bots for a in current_agents)
-            # Allow on a relevant agent is always a warning — it grants access
             line_map[i] = {
                 "type": "allow", "path": path,
                 "relevant": relevant,
                 "severity": "warn" if relevant else "info"
             }
 
-        elif lowered.startswith("sitemap:") or lowered.startswith("crawl-delay:") or lowered.startswith("host:"):
+        elif lowered.startswith(("sitemap:", "crawl-delay:", "host:")):
             # Known non-directive lines — do NOT reset agent context
             line_map[i] = {"type": "other", "relevant": False, "severity": "info"}
 
         else:
-            # Truly unrecognised token — reset per RFC 9309
             current_agents = []
             line_map[i] = {"type": "other", "relevant": False, "severity": "info"}
 

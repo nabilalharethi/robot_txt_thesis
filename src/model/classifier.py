@@ -3,6 +3,13 @@ classifier.py — Semantic Configuration Analyzer (SCA) — RQ1
 
 Implements section-based semantic parsing of robots.txt files and
 classifies configurations into six Defense Tiers.
+
+RFC 9309 key rules implemented here:
+  1. A named bot section REPLACES the wildcard entirely for that bot.
+     The wildcard is not consulted at all if a named section exists.
+  2. Among matching rules, the LONGEST (most specific) path wins.
+  3. Ties in path length → Allow wins.
+  4. Sitemap:, Host:, crawl-delay: do NOT reset parser state.
 """
 
 import logging
@@ -11,85 +18,83 @@ logger = logging.getLogger(__name__)
 
 
 BOTS = {
-    # APP_LAYER: user-facing AI assistants that answer questions using crawled content.
-    # These are the visible, named bots that operators are most aware of.
-    # Expanded (audit fix): added claude-searchbot, claude-user, oai-searchbot,
-    # chatgpt-user, perplexity-user, deepseekbot, mistralai-user — all observed
-    # in the thesis dataset robots.txt files.
+    # APP_LAYER: user-facing AI assistants
     "APP_LAYER": [
-        "GPTBot",           # OpenAI training
-        "ClaudeBot",        # Anthropic training
-        "Claude-SearchBot",  # Anthropic search
-        "Claude-User",      # Anthropic user-agent variant
-        "ChatGPT-User",     # OpenAI user-agent variant
-        "OAI-SearchBot",    # OpenAI search
-        "PerplexityBot",    # Perplexity AI
-        "Perplexity-User",  # Perplexity user-agent variant
-        "YouBot",           # You.com
-        "DeepSeekBot",      # DeepSeek AI
-        "MistralAI-User",   # Mistral AI
+        "GPTBot",
+        "ClaudeBot",
+        "Claude-SearchBot",
+        "Claude-User",
+        "ChatGPT-User",
+        "OAI-SearchBot",
+        "PerplexityBot",
+        "Perplexity-User",
+        "YouBot",
+        "DeepSeekBot",
+        "MistralAI-User",
     ],
 
-    # INFRA_LAYER: training data infrastructure collectors.
-    # These bots harvest data for model training pipelines rather than
-    # serving end-users directly.  Most commonly missed by operators.
-    # Expanded (audit fix): added omgilibot, diffbot, timpibot, amazonbot,
-    # img2dataset, friendlycrawler, icc-crawler, kangaroo bot — all present
-    # in the thesis dataset and documented AI training data collectors.
+    # INFRA_LAYER: training data infrastructure collectors
     "INFRA_LAYER": [
-        "CCBot",            # Common Crawl — primary GPT training source
-        "FacebookBot",      # Meta training infrastructure
-        "Applebot",         # Apple ML data collection
-        "Bytespider",       # ByteDance/TikTok training
-        "Omgilibot",        # Web data aggregator (AI training use)
-        "Omgili",           # Omgilibot alias
-        "Diffbot",          # Structured data extraction for AI
-        "Timpibot",         # Training data collector
-        "AmazonBot",        # Amazon Alexa training
-        "Img2dataset",      # LAION image dataset crawler
-        "FriendlyCrawler",  # Training data collector
-        "ICC-Crawler",      # AI training data crawler
-        "Kangaroo Bot",     # Training data collector
-        "VelenPublicWebCrawler",  # Velen AI training crawler
+        "CCBot",
+        "FacebookBot",
+        "Applebot",
+        "Bytespider",
+        "Omgilibot",
+        "Omgili",
+        "Diffbot",
+        "Timpibot",
+        "AmazonBot",
+        "Img2dataset",
+        "FriendlyCrawler",
+        "ICC-Crawler",
+        "Kangaroo Bot",
+        "VelenPublicWebCrawler",
     ],
 
-    # GOOGLE_AI: Google's dedicated AI training bot.
-    # Separated because it creates the SEO dilemma — blocking it risks
-    # Google Gemini training but operators fear conflating it with Googlebot.
+    # GOOGLE_AI: Google's dedicated AI training bot
     "GOOGLE_AI": [
-        "Google-Extended",          # Gemini/Bard training
-        "Google-CloudVertexBot",    # Vertex AI training
-        "Gemini-Deep-Research",     # Gemini deep research agent
+        "Google-Extended",
+        "Google-CloudVertexBot",
+        "Gemini-Deep-Research",
     ],
 
-    # GOOGLE_SEARCH: standard search indexing — legitimate SEO traffic.
-    # Used only for Tier 4b detection (wildcard + Googlebot exception).
+    # GOOGLE_SEARCH: standard search indexing
     "GOOGLE_SEARCH": [
         "Googlebot",
     ],
 }
+
+# Known non-directive lines that must NOT reset parser state per RFC 9309.
+# The original code reset on any unrecognised line, which incorrectly treated
+# Sitemap: as a group-terminator, breaking configs like:
+#   User-agent: GPTBot
+#   Sitemap: https://example.com/sitemap.xml   ← was wrongly resetting state
+#   Disallow: /                                 ← was then orphaned
+_NON_RESETTING_DIRECTIVES = frozenset([
+    "sitemap:",
+    "host:",
+    "crawl-delay:",
+])
 
 
 def _parse_sections(lines):
     """
     Parse robots.txt lines into a user-agent → directives map.
 
-    FIX (audit): blank lines and comment lines no longer reset
-    current_agents.  RFC 9309 §2.2 permits blank lines within a
-    record group; only a genuinely unrecognised non-directive token
-    signals the end of a group.  The original code reset on ANY
-    non-directive line (including blank lines), which caused
-    User-agent: * / <blank line> / Disallow: / to be parsed as if
-    the wildcard had no directives — misclassifying Tier 5 sites as
-    Tier 3.
+    RFC 9309 compliance:
+    - Blank lines and comments do NOT reset current agent context.
+    - Known non-group directives (Sitemap:, Host:, crawl-delay:) do NOT reset context.
+    - Only genuinely unrecognised tokens reset the context.
+    - Multiple User-agent lines before any Disallow/Allow define a group
+      that applies to all listed agents.
     """
     sections = {}
     current_agents = []
 
-    for i, line in enumerate(lines):
+    for line in lines:
         line = line.strip()
 
-        # Skip blank lines and comments without resetting context
+        # Blank lines and comments: skip without resetting
         if not line or line.startswith("#"):
             continue
 
@@ -98,32 +103,49 @@ def _parse_sections(lines):
             current_agents.append(agent)
             sections.setdefault(agent, [])
 
-        elif line.startswith(("disallow:", "allow:", "crawl-delay:")):
+        elif line.startswith(("disallow:", "allow:")):
             for agent in current_agents:
                 sections.setdefault(agent, []).append(line)
 
+        elif any(line.startswith(prefix) for prefix in _NON_RESETTING_DIRECTIVES):
+            # Known non-group directives — do NOT reset agent context
+            pass
+
         else:
-            # Genuinely unrecognised directive (e.g. Sitemap:, Host:)
-            # — reset agent context per RFC 9309 §2.2
+            # Genuinely unrecognised token — reset per RFC 9309 §2.2
             current_agents = []
 
     return sections
 
 
 def _is_fully_blocked(directives):
-    for d in directives:
-        if d.startswith("disallow:"):
-            val = d.split(":", 1)[1].strip()
-            if val == "/":
-                return True
-    return False
+    """Returns True if directives contain Disallow: / with no overriding Allow: /."""
+    has_root_disallow = any(
+        d.startswith("disallow:") and d.split(":", 1)[1].strip() == "/"
+        for d in directives
+    )
+    if not has_root_disallow:
+        return False
+
+    # RFC 9309: Allow: / with equal length (1) ties with Disallow: / → Allow wins.
+    # So if a section has both Disallow: / and Allow: /, Allow wins and the
+    # bot is NOT fully blocked.
+    has_root_allow = any(
+        d.startswith("allow:") and d.split(":", 1)[1].strip() == "/"
+        for d in directives
+    )
+    if has_root_allow:
+        return False  # tie → Allow wins, bot is allowed
+
+    return True
 
 
 def _is_fully_allowed(directives):
+    """Returns True if directives explicitly allow root (empty Disallow or Allow: /)."""
     for d in directives:
         if d.startswith("disallow:"):
             val = d.split(":", 1)[1].strip()
-            if not val:
+            if not val:  # empty Disallow = allow all
                 return True
         if d.startswith("allow:"):
             val = d.split(":", 1)[1].strip()
@@ -133,38 +155,79 @@ def _is_fully_allowed(directives):
 
 
 def _detect_wildcard_block(sections):
+    """
+    Returns True only if the wildcard section has Disallow: / with no Allow: /
+    override of equal or greater specificity.
+
+    NOTE: this tells us the wildcard INTENDS to block everything. Whether a
+    specific named bot is actually blocked by the wildcard depends on whether
+    that bot has its own section (see _bot_is_blocked_by_wildcard).
+    """
     wildcard = sections.get("*", [])
-    result = _is_fully_blocked(wildcard)
-    if result:
-        logger.debug("Wildcard block detected")
-    return result
+    return _is_fully_blocked(wildcard)
+
+
+def _bot_is_blocked_by_wildcard(bot_lower, sections):
+    """
+    Per RFC 9309, a named bot section REPLACES the wildcard entirely.
+    If the bot has any entry in sections (even an empty one), the wildcard
+    does NOT apply to it.
+
+    Returns True only if:
+      - The wildcard has Disallow: / (no Allow: / override), AND
+      - The bot has NO named section of its own.
+    """
+    if bot_lower in sections:
+        # Named section exists — wildcard is irrelevant for this bot.
+        # The bot's own section governs entirely.
+        return False
+    # No named section — wildcard applies
+    wildcard = sections.get("*", [])
+    return _is_fully_blocked(wildcard)
 
 
 def _detect_google_exception(sections):
+    """True if Googlebot has its own section that fully allows access."""
     googlebot = sections.get("googlebot", [])
     if not googlebot:
+        # No named Googlebot section. If there's a wildcard block,
+        # Googlebot is also blocked (no exception).
         return False
-    result = _is_fully_allowed(googlebot)
-    if result:
-        logger.debug("Google Search exception detected")
-    return result
+    return _is_fully_allowed(googlebot)
 
 
 def _detect_google_ai_block(sections):
-    ext = sections.get("google-extended", [])
-    if not ext:
-        return False
-    result = _is_fully_blocked(ext)
-    if result:
-        logger.debug("Google-Extended block detected")
-    return result
+    """
+    True if Google-Extended (or any Google AI bot) is effectively blocked.
+    Checks both direct named section and wildcard coverage per RFC 9309.
+    """
+    for bot in BOTS["GOOGLE_AI"]:
+        bot_lower = bot.lower()
+        directives = sections.get(bot_lower, [])
+        if directives and _is_fully_blocked(directives):
+            return True
+        # Also covered if wildcard blocks and no named section overrides
+        if _bot_is_blocked_by_wildcard(bot_lower, sections):
+            return True
+    return False
 
 
 def _detect_layer_blocks(sections):
+    """
+    For each layer, a bot is considered blocked if:
+      (a) it has a named section with Disallow: / (with no Allow: / tie), OR
+      (b) it has no named section AND the wildcard has Disallow: /
+
+    Returns True for a layer if ANY bot in that layer is effectively blocked.
+    This is the "any_blocked" logic used in tier classification.
+    """
     def any_blocked(bot_list):
         for bot in bot_list:
-            directives = sections.get(bot.lower(), [])
-            if _is_fully_blocked(directives):
+            bot_lower = bot.lower()
+            directives = sections.get(bot_lower, [])
+            if directives and _is_fully_blocked(directives):
+                return True
+            if _bot_is_blocked_by_wildcard(bot_lower, sections):
                 return True
         return False
 
