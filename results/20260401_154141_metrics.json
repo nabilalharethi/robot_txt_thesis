@@ -1,0 +1,171 @@
+{
+  "total_sites": 800,
+  "compliant": 216,
+  "partial": 27,
+  "nominal": 6,
+  "non_compliant": 551,
+  "compliance_gap": 557,
+  "gap_percentage": 69.62,
+  "intended_rate": 71.62,
+  "effective_rate": 27.0,
+  "enumeration_fallacy_count": 357,
+  "by_country": {
+    "FR": {
+      "total": 32,
+      "compliant": 10,
+      "gap": 20
+    },
+    "NL": {
+      "total": 35,
+      "compliant": 9,
+      "gap": 24
+    },
+    "DE": {
+      "total": 32,
+      "compliant": 17,
+      "gap": 13
+    },
+    "AT": {
+      "total": 29,
+      "compliant": 7,
+      "gap": 22
+    },
+    "IT": {
+      "total": 28,
+      "compliant": 5,
+      "gap": 22
+    },
+    "GB": {
+      "total": 30,
+      "compliant": 6,
+      "gap": 24
+    },
+    "IE": {
+      "total": 32,
+      "compliant": 2,
+      "gap": 29
+    },
+    "CZ": {
+      "total": 35,
+      "compliant": 10,
+      "gap": 22
+    },
+    "EE": {
+      "total": 31,
+      "compliant": 5,
+      "gap": 25
+    },
+    "LT": {
+      "total": 28,
+      "compliant": 5,
+      "gap": 22
+    },
+    "BG": {
+      "total": 27,
+      "compliant": 9,
+      "gap": 18
+    },
+    "HU": {
+      "total": 28,
+      "compliant": 6,
+      "gap": 22
+    },
+    "CH": {
+      "total": 32,
+      "compliant": 12,
+      "gap": 19
+    },
+    "SE": {
+      "total": 34,
+      "compliant": 12,
+      "gap": 22
+    },
+    "RO": {
+      "total": 35,
+      "compliant": 2,
+      "gap": 31
+    },
+    "HR": {
+      "total": 31,
+      "compliant": 5,
+      "gap": 25
+    },
+    "ES": {
+      "total": 28,
+      "compliant": 5,
+      "gap": 21
+    },
+    "LV": {
+      "total": 33,
+      "compliant": 6,
+      "gap": 25
+    },
+    "PL": {
+      "total": 26,
+      "compliant": 10,
+      "gap": 14
+    },
+    "SK": {
+      "total": 29,
+      "compliant": 4,
+      "gap": 25
+    },
+    "SI": {
+      "total": 33,
+      "compliant": 4,
+      "gap": 29
+    },
+    "PT": {
+      "total": 30,
+      "compliant": 4,
+      "gap": 26
+    },
+    "NO": {
+      "total": 33,
+      "compliant": 21,
+      "gap": 12
+    },
+    "BE": {
+      "total": 29,
+      "compliant": 13,
+      "gap": 16
+    },
+    "DK": {
+      "total": 30,
+      "compliant": 15,
+      "gap": 11
+    },
+    "FI": {
+      "total": 30,
+      "compliant": 12,
+      "gap": 18
+    }
+  },
+  "by_tier": {
+    "Tier 1": {
+      "total": 561,
+      "compliant": 0,
+      "gap": 551
+    },
+    "Tier 5": {
+      "total": 160,
+      "compliant": 150,
+      "gap": 4
+    },
+    "Tier 3": {
+      "total": 68,
+      "compliant": 60,
+      "gap": 2
+    },
+    "Tier 4b": {
+      "total": 7,
+      "compliant": 6,
+      "gap": 0
+    },
+    "Tier 2": {
+      "total": 4,
+      "compliant": 0,
+      "gap": 0
+    }
+  }
+}

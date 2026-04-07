@@ -38,26 +38,28 @@ def _parse_raw_sections(lines):
     current = None
 
     for i, line in enumerate(lines):
-        stripped = line.strip().lower()
+        stripped = line.strip()
+        lowered = stripped.lower()
+        
         if not stripped or stripped.startswith("#"):
             continue
 
-        if stripped.startswith("user-agent:"):
-            agent = stripped.split(":", 1)[1].strip()
+        if lowered.startswith("user-agent:"):
+            # Agents are case-insensitive
+            agent = lowered.split(":", 1)[1].strip()
             if current and not current["directives"]:
                 current["agents"].append(agent)
             else:
                 current = {"agents": [agent], "directives": [], "line_start": i}
                 sections.append(current)
 
-        elif stripped.startswith(("disallow:", "allow:", "crawl-delay:")):
+        elif lowered.startswith(("disallow:", "allow:", "crawl-delay:")):
             if current is not None:
+                # Keep ORIGINAL case for the directive and path
                 current["directives"].append({"text": stripped, "line": i})
 
-        elif stripped.startswith(("sitemap:", "host:")):
-            # Non-resetting known directives — do NOT break current section
+        elif lowered.startswith(("sitemap:", "host:")):
             pass
-
         else:
             current = None
 
@@ -111,7 +113,7 @@ def _detect_wildcard_override(sections):
         return conflicts
 
     has_wildcard_disallow = any(
-        _dtype(d) == "disallow" and _path(d) == "/"
+        _dtype(d) == "disallow" and _path(d) in ("/", "/*")
         for d in wildcard_section["directives"]
     )
     if not has_wildcard_disallow:
@@ -121,7 +123,7 @@ def _detect_wildcard_override(sections):
         if "*" in s["agents"]:
             continue
         for d in s["directives"]:
-            if _dtype(d) == "allow" and _path(d) == "/":
+            if _dtype(d) == "allow" and _path(d) in ("/", "/*"):
                 for agent in s["agents"]:
                     conflicts.append({
                         "type":           "WILDCARD_OVERRIDE",
@@ -296,7 +298,7 @@ def _detect_empty_disallow_conflict(sections):
 
 
 def detect_conflicts(content):
-    lines = content.lower().splitlines()
+    lines = content.splitlines()
     sections = _parse_raw_sections(lines)
 
     all_conflicts = []

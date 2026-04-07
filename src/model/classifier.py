@@ -79,63 +79,67 @@ _NON_RESETTING_DIRECTIVES = frozenset([
 
 def _parse_sections(lines):
     """
-    Parse robots.txt lines into a user-agent → directives map.
-
-    RFC 9309 compliance:
-    - Blank lines and comments do NOT reset current agent context.
-    - Known non-group directives (Sitemap:, Host:, crawl-delay:) do NOT reset context.
-    - Only genuinely unrecognised tokens reset the context.
-    - Multiple User-agent lines before any Disallow/Allow define a group
-      that applies to all listed agents.
+    Parse robots.txt lines into a user-agent -> directives map.
+    Fixes the case-sensitivity bug: User-agents are case-insensitive, paths are not.
     """
     sections = {}
     current_agents = []
 
     for line in lines:
         line = line.strip()
-
-        # Blank lines and comments: skip without resetting
         if not line or line.startswith("#"):
             continue
 
-        if line.startswith("user-agent:"):
-            agent = line.split(":", 1)[1].strip()
+        # Agents are case-insensitive
+        if line.lower().startswith("user-agent:"):
+            agent = line.split(":", 1)[1].strip().lower() 
             current_agents.append(agent)
             sections.setdefault(agent, [])
 
-        elif line.startswith(("disallow:", "allow:")):
+        # Directives preserve their original case for path evaluation
+        elif line.lower().startswith(("disallow:", "allow:")):
             for agent in current_agents:
                 sections.setdefault(agent, []).append(line)
 
-        elif any(line.startswith(prefix) for prefix in _NON_RESETTING_DIRECTIVES):
-            # Known non-group directives — do NOT reset agent context
+        elif any(line.lower().startswith(prefix) for prefix in _NON_RESETTING_DIRECTIVES):
             pass
-
         else:
-            # Genuinely unrecognised token — reset per RFC 9309 §2.2
             current_agents = []
 
     return sections
 
 
 def _is_fully_blocked(directives):
-    """Returns True if directives contain Disallow: / with no overriding Allow: /."""
-    has_root_disallow = any(
-        d.startswith("disallow:") and d.split(":", 1)[1].strip() == "/"
-        for d in directives
-    )
-    if not has_root_disallow:
+    """
+    Evaluates if the root directory is effectively blocked using RFC 9309 
+    longest-path specificity rules.
+    """
+    allow_len = -1
+    disallow_len = -1
+
+    for d in directives:
+        d_lower = d.lower()
+        if d_lower.startswith("allow:"):
+            path = d.split(":", 1)[1].strip()
+            # If path is empty, it's invalid per RFC, ignore.
+            if path and (path == "/" or path.startswith("/*")):
+                allow_len = max(allow_len, len(path))
+                
+        elif d_lower.startswith("disallow:"):
+            path = d.split(":", 1)[1].strip()
+            # Empty disallow means allow all. It overrides everything.
+            if not path:
+                return False 
+            if path == "/" or path.startswith("/*"):
+                disallow_len = max(disallow_len, len(path))
+
+    # If no root disallow exists, it is not blocked.
+    if disallow_len == -1:
         return False
 
-    # RFC 9309: Allow: / with equal length (1) ties with Disallow: / → Allow wins.
-    # So if a section has both Disallow: / and Allow: /, Allow wins and the
-    # bot is NOT fully blocked.
-    has_root_allow = any(
-        d.startswith("allow:") and d.split(":", 1)[1].strip() == "/"
-        for d in directives
-    )
-    if has_root_allow:
-        return False  # tie → Allow wins, bot is allowed
+    # RFC 9309: If Allow and Disallow match the same path length, Allow wins.
+    if allow_len >= disallow_len:
+        return False
 
     return True
 

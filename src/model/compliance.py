@@ -55,14 +55,43 @@ def _wildcard_covers_layer(sections, bot_list):
 
     return True
 
+def _classify_optout_signal(sections, all_ai_bots):
+    """
+    Returns signal strength rather than binary intended/not-intended.
+    STRONG: Named AI bots explicitly disallowed (deliberate AI-specific blocking)
+    WEAK:   Only wildcard disallow present (ambiguous — may not be AI-motivated)
+    NONE:   No disallow directives relevant to AI bots
+    """
+    # Named AI bot check — stronger evidence of deliberate opt-out
+    for bot in all_ai_bots:
+        directives = sections.get(bot.lower(), [])
+        if any(
+            d.lower().startswith("disallow:") and d.split(":", 1)[1].strip()
+            for d in directives
+        ):
+            return "STRONG"
+
+    # Wildcard only — weaker, ambiguous signal
+    if any(
+        d.startswith("disallow:") and d.split(":", 1)[1].strip()
+        for d in sections.get("*", [])
+    ):
+        return "WEAK"
+
+    return "NONE"
+
 
 def analyze_compliance(content, classification_result, conflict_result):
     content = content.lower()
     sections = _parse_sections(content.splitlines())
     tier = classification_result["tier"]
 
-    layer_analysis = {}
+    all_ai_bots = [
+        b.lower() for b in
+        BOTS["APP_LAYER"] + BOTS["INFRA_LAYER"] + BOTS["GOOGLE_AI"]
+    ]
 
+    layer_analysis = {}
     for layer_key, bot_list in [
         ("app_layer",   BOTS["APP_LAYER"]),
         ("infra_layer", BOTS["INFRA_LAYER"]),
@@ -93,53 +122,40 @@ def analyze_compliance(content, classification_result, conflict_result):
         for k, v in layer_analysis.items()
     ), 4)
 
-    all_ai_bots = [
-        b.lower() for b in
-        BOTS["APP_LAYER"] + BOTS["INFRA_LAYER"] + BOTS["GOOGLE_AI"]
-    ]
-
-    wildcard_has_disallow = any(
-        d.startswith("disallow:") and d.split(":", 1)[1].strip()
-        for d in sections.get("*", [])
-    )
-
-    intended_optout = wildcard_has_disallow or any(
-        a in all_ai_bots and any(
-            d.startswith("disallow:") and d.split(":", 1)[1].strip()
-            for d in sections.get(a, [])
-        )
-        for a in sections
-    )
+    signal_strength = _classify_optout_signal(sections, all_ai_bots)
+    has_optout_signal = signal_strength in ("STRONG", "WEAK")
     effective_optout = all(v["effective"] for v in layer_analysis.values())
-    gap_identified = intended_optout and not effective_optout
+    gap_identified = has_optout_signal and not effective_optout
 
     if effective_optout:
         status = "COMPLIANT"
         description = (
             "All three AI crawling layers are effectively blocked. "
-            "The opt-out is semantically valid under EU AI Act Recital 105 "
-            "and Article 53(1)(c)."
+            "The opt-out signal is semantically valid under EU AI Act "
+            "Recital 105 and Article 53(1)(c)."
         )
-    elif intended_optout and conflict_result.get("severity_counts", {}).get("HIGH", 0) > 0 and score < 0.35:
+    elif has_optout_signal and conflict_result.get("severity_counts", {}).get("HIGH", 0) > 0 and score < 0.35:
         status = "NOMINAL"
         description = (
-            "AI bots referenced in robots.txt but HIGH severity conflicts "
-            "undermine the intended protection. The opt-out exists nominally "
-            "but is not semantically effective — Enumeration Fallacy in practice."
+            f"An opt-out signal is present (strength: {signal_strength}) but "
+            f"HIGH severity conflicts undermine semantic effectiveness. "
+            f"The configuration appears protective but is not — "
+            f"Enumeration Fallacy in practice."
         )
-    elif intended_optout and score > 0:
+    elif has_optout_signal and score > 0:
         layers_blocked = sum(1 for v in layer_analysis.values() if v["effective"])
         status = "PARTIAL"
         description = (
-            f"Partial opt-out: {layers_blocked}/3 layers effectively blocked. "
+            f"Partial opt-out: {layers_blocked}/3 layers effectively blocked "
+            f"(signal strength: {signal_strength}). "
             f"Missing layers represent a compliance gap under EU AI Act "
             f"Article 53(1)(c)."
         )
     else:
         status = "NON_COMPLIANT"
         description = (
-            "No effective AI opt-out detected. The site is fully accessible "
-            "to AI training data collectors. No valid reservation of rights "
+            "No effective AI opt-out signal detected. All AI training data "
+            "collectors have full access. No valid reservation of rights "
             "under EU AI Act Recital 105."
         )
 
@@ -155,33 +171,29 @@ def analyze_compliance(content, classification_result, conflict_result):
     else:
         conflict_impact = "No conflicts — configuration is internally consistent."
 
-    logger.info(
-        f"Compliance: {status} | score={score} | gap={gap_identified} | tier={tier}"
-    )
-
     return {
-        "status":           status,
-        "score":            score,
-        "gap_identified":   gap_identified,
-        "intended_optout":  intended_optout,
-        "effective_optout": effective_optout,
-        "layer_analysis":   layer_analysis,
-        "conflict_impact":  conflict_impact,
-        "description":      description,
-        "eu_ai_act_ref":    "EU AI Act Recital 105 / Article 53(1)(c)",
+        "status":            status,
+        "score":             score,
+        "gap_identified":    gap_identified,
+        "signal_strength":   signal_strength,       
+        "has_optout_signal": has_optout_signal,      
+        "effective_optout":  effective_optout,
+        "layer_analysis":    layer_analysis,
+        "conflict_impact":   conflict_impact,
+        "description":       description,
+        "eu_ai_act_ref":     "EU AI Act Recital 105 / Article 53(1)(c)",
     }
+    
 
 
 def compute_gap_metrics(results):
     valid = [r for r in results if r.get("strategy") != "ERROR"]
     total = len(valid)
-
     if total == 0:
-        logger.warning("No valid results for gap metrics")
         return {}
 
     status_counts = {"COMPLIANT": 0, "PARTIAL": 0, "NOMINAL": 0, "NON_COMPLIANT": 0}
-    intended_count = 0
+    signal_counts = {"STRONG": 0, "WEAK": 0, "NONE": 0}   # NEW
     effective_count = 0
     fallacy_count = 0
     by_country = {}
@@ -192,8 +204,10 @@ def compute_gap_metrics(results):
         status = comp.get("status", "NON_COMPLIANT")
         status_counts[status] = status_counts.get(status, 0) + 1
 
-        if comp.get("intended_optout"):
-            intended_count += 1
+        # NEW — count signal strengths instead of intended_optout
+        sig = comp.get("signal_strength", "NONE")
+        signal_counts[sig] = signal_counts.get(sig, 0) + 1
+
         if comp.get("effective_optout"):
             effective_count += 1
         if comp.get("gap_identified"):
@@ -216,8 +230,9 @@ def compute_gap_metrics(results):
             by_tier[tier]["gap"] += 1
 
     gap = status_counts["NOMINAL"] + status_counts["NON_COMPLIANT"]
+    has_signal_count = signal_counts["STRONG"] + signal_counts["WEAK"]
 
-    metrics = {
+    return {
         "total_sites":               total,
         "compliant":                 status_counts["COMPLIANT"],
         "partial":                   status_counts["PARTIAL"],
@@ -225,15 +240,12 @@ def compute_gap_metrics(results):
         "non_compliant":             status_counts["NON_COMPLIANT"],
         "compliance_gap":            gap,
         "gap_percentage":            round(gap / total * 100, 2),
-        "intended_rate":             round(intended_count / total * 100, 2),
+        # RENAMED from intended_rate
+        "signal_rate":               round(has_signal_count / total * 100, 2),
+        "strong_signal_rate":        round(signal_counts["STRONG"] / total * 100, 2),
+        "weak_signal_rate":          round(signal_counts["WEAK"] / total * 100, 2),
         "effective_rate":            round(effective_count / total * 100, 2),
         "enumeration_fallacy_count": fallacy_count,
         "by_country":                by_country,
         "by_tier":                   by_tier,
     }
-
-    logger.info(
-        f"Gap metrics: {gap}/{total} non-compliant ({metrics['gap_percentage']}%) | "
-        f"Enumeration fallacy: {fallacy_count}"
-    )
-    return metrics

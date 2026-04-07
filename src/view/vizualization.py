@@ -166,7 +166,7 @@ def _generate_all(df: pd.DataFrame, metrics: dict):
             if "strategy" in df.columns else df.copy()
     fig1_tier_distribution(valid)
     fig2_compliance_donut(valid)
-    fig3_intended_vs_effective(valid)
+    fig3_signal_vs_effective(valid)    
     fig4_group_stacked(valid)
     fig5_conflict_scatter(valid)
     fig6_score_distribution(valid)
@@ -207,7 +207,8 @@ def save_results(df: pd.DataFrame, metrics: dict):
         f"  NON_COMPLIANT : {metrics.get('non_compliant',0):>5}  ({metrics.get('non_compliant',0)/max(total,1)*100:.1f}%)",
         "",
         f"  Compliance gap      : {metrics.get('compliance_gap',0)}/{total}  ({metrics.get('gap_percentage',0):.2f}%)",
-        f"  Intended opt-out    : {metrics.get('intended_rate',0):.2f}%",
+        f"  Strong signal rate  : {metrics.get('strong_signal_rate', 0):.2f}%  (named AI bot)",
+        f"  Weak signal rate    : {metrics.get('weak_signal_rate', 0):.2f}%  (wildcard only)",
         f"  Effective opt-out   : {metrics.get('effective_rate',0):.2f}%",
         f"  Enumeration Fallacy : {metrics.get('enumeration_fallacy_count',0)} sites",
         "",
@@ -300,9 +301,6 @@ def fig1_tier_distribution(df):
     ax.set_title(f"RQ1 — Defense Tier Distribution  (n = {total})")
     ax.tick_params(axis="y", labelsize=9)
     ax.grid(axis="x")
-    fig.text(0.12, -0.02, "Source: SCA pipeline — thesis dataset",
-             fontsize=7, color="#AAAAAA")
-
     plt.tight_layout()
     _save(fig, "fig1_tier_distribution.png")
 
@@ -357,59 +355,66 @@ def fig2_compliance_donut(df):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# FIG 3 — RQ3: Intended vs Effective Opt-Out
+# FIG 3 — RQ3: Signal Strength vs Effective Opt-Out
 # ══════════════════════════════════════════════════════════════════════════════
 
-def fig3_intended_vs_effective(df):
-    total     = len(df)
-    intended  = int(df["intended_optout"].sum())  if "intended_optout"  in df.columns else 0
-    effective = int(df["effective_optout"].sum()) if "effective_optout" in df.columns else 0
-    int_pct   = intended  / total * 100 if total else 0
-    eff_pct   = effective / total * 100 if total else 0
-    gap_pct   = int_pct - eff_pct
-    gap_n     = intended - effective
+def fig3_signal_vs_effective(df):
 
-    fig, ax = plt.subplots(figsize=(7, 4.5))
-    x = [0, 1]
-    bars = ax.bar(x,
-                  [int_pct, eff_pct],
-                  color=["#3A86FF", "#2DC653"],
-                  width=0.42, edgecolor="white", linewidth=0.5,
-                  zorder=3)
+    total = len(df)
 
-    # Value labels above bars
-    for bar, pct, n in zip(bars, [int_pct, eff_pct], [intended, effective]):
+    strong   = int((df["signal_strength"] == "STRONG").sum()) if "signal_strength" in df.columns else 0
+    weak     = int((df["signal_strength"] == "WEAK").sum())   if "signal_strength" in df.columns else 0
+    effective = int(df["effective_optout"].sum())              if "effective_optout" in df.columns else 0
+
+    strong_pct   = strong   / total * 100 if total else 0
+    weak_pct     = weak     / total * 100 if total else 0
+    eff_pct      = effective / total * 100 if total else 0
+    gap_n        = (strong + weak) - effective
+    gap_pct      = (strong_pct + weak_pct) - eff_pct
+
+    fig, ax = plt.subplots(figsize=(8, 4.5))
+    x      = [0, 1, 2]
+    vals   = [strong_pct, weak_pct, eff_pct]
+    colors = ["#3A86FF", "#7B2D8B", "#2DC653"]
+    xlbls  = [
+        f"Strong signal\n(named AI bot)",
+        f"Weak signal\n(wildcard only)",
+        f"Effective\nopt-out"
+    ]
+
+    bars = ax.bar(x, vals, color=colors, width=0.42,
+                  edgecolor="white", linewidth=0.5, zorder=3)
+
+    for bar, pct, n in zip(bars, vals, [strong, weak, effective]):
         ax.text(bar.get_x() + bar.get_width() / 2,
                 bar.get_height() + 1.2,
                 f"{pct:.1f}%\n({n} sites)",
                 ha="center", va="bottom", fontsize=10,
                 fontweight="bold", color="#222222")
 
-    # Gap arrow between the two bars
-    y_arrow = min(int_pct, eff_pct) * 0.5
+    # Gap arrow between combined signal bars and effective bar
+    combined_pct = strong_pct + weak_pct
+    y_arrow = min(combined_pct, eff_pct) * 0.5
     ax.annotate("",
-                xy=(x[1] - 0.21, y_arrow),
+                xy=(x[2] - 0.21, y_arrow),
                 xytext=(x[0] + 0.21, y_arrow),
                 arrowprops=dict(arrowstyle="<->", color="#D64045", lw=1.8))
-    ax.text(0.5, y_arrow + 2.5,
-            f"Gap = {gap_pct:.1f}%  ({gap_n} sites = Enumeration Fallacy)",
+    ax.text(1.0, y_arrow + 2.5,
+            f"Signal→Effect gap = {gap_pct:.1f}%  ({gap_n} sites)",
             ha="center", va="bottom", fontsize=9,
             color="#D64045", fontweight="bold")
 
-    # Reference line at 0
     ax.axhline(0, color="#CCCCCC", linewidth=0.5)
-
     ax.set_xticks(x)
-    ax.set_xticklabels(["Intended opt-out", "Effective opt-out"], fontsize=10)
-    ax.set_ylim(0, 108)
+    ax.set_xticklabels(xlbls, fontsize=10)
+    ax.set_ylim(0, 115)
     ax.set_ylabel("% of sites")
     ax.yaxis.set_major_formatter(mticker.PercentFormatter())
     ax.grid(axis="y", zorder=0)
-    ax.set_title("RQ3 — Intended vs Effective Opt-Out")
-    fig.text(0.12, -0.02,
-             "Ref: EU AI Act Recital 105 / Article 53(1)(c)",
-             fontsize=7, color="#AAAAAA")
-    _save(fig, "fig3_intended_vs_effective.png")
+    ax.set_title("RQ3 — Opt-Out Signal Strength vs Effective Opt-Out\n"
+                 "Strong = named AI bot blocked · Weak = wildcard only · "
+                 "Effective = semantically valid under RFC 9309")
+    _save(fig, "fig3_signal_vs_effective.png")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -483,31 +488,34 @@ def fig4_group_stacked(df):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def fig5_conflict_scatter(df):
-    needed = {"compliance_score","conflict_count","strategy_tier"}
+    needed = {"compliance_score", "conflict_count", "strategy_tier"}
     if not needed.issubset(df.columns):
         print(f"  Skipping fig5 — missing: {needed - set(df.columns)}")
         return
 
     rng = np.random.default_rng(42)
-    fig, ax = plt.subplots(figsize=(9, 6))
+    # Increased width slightly to 10 to accommodate the legend on the right
+    fig, ax = plt.subplots(figsize=(10, 6)) 
     handles = []
 
-    for tier in ["Tier 5","Tier 4b","Tier 4a","Tier 3","Tier 2","Tier 1"]:
+    for tier in ["Tier 5", "Tier 4b", "Tier 4a", "Tier 3", "Tier 2", "Tier 1"]:
         sub = df[df["strategy_tier"] == tier].copy()
         if sub.empty:
             continue
-        # Add small jitter to separate overlapping points
+            
         jx = rng.uniform(-0.15, 0.15, len(sub))
         jy = rng.uniform(-0.01, 0.01, len(sub))
+        
         ax.scatter(sub["conflict_count"] + jx,
                    sub["compliance_score"] + jy,
                    c=TIER_COLORS.get(tier, "#AAAAAA"),
                    s=50, alpha=0.75, edgecolors="white",
                    linewidths=0.4, zorder=3)
+        
         handles.append(mpatches.Patch(color=TIER_COLORS.get(tier, "#AAAAAA"), label=tier))
 
-    nominal = df[df["compliance_status"] == "NOMINAL"] \
-              if "compliance_status" in df.columns else pd.DataFrame()
+    # Highlight Nominal/Fallacy sites
+    nominal = df[df["compliance_status"] == "NOMINAL"] if "compliance_status" in df.columns else pd.DataFrame()
     if not nominal.empty:
         ax.scatter(nominal["conflict_count"],
                    nominal["compliance_score"],
@@ -517,22 +525,33 @@ def fig5_conflict_scatter(df):
             facecolor="none", edgecolor="#D64045",
             linewidth=1.8, label="Enumeration Fallacy (NOMINAL)"))
 
+    # Threshold line
     max_c = max(df["conflict_count"].max() if not df.empty else 5, 1)
-    ax.axhline(0.35, color="#FB8500", linewidth=0.9,
-               linestyle="--", alpha=0.8, zorder=1)
-    ax.text(max_c * 0.02, 0.37,
-            "NOMINAL threshold (score < 0.35)",
+    ax.axhline(0.35, color="#FB8500", linewidth=0.9, linestyle="--", alpha=0.8, zorder=1)
+    ax.text(max_c * 0.02, 0.37, "NOMINAL threshold (score < 0.35)",
             fontsize=8, color="#FB8500", va="bottom")
 
+    # Formatting
     ax.set_xlabel("Conflicting directives per site")
     ax.set_ylabel("Compliance score (0.0 – 1.0)")
     ax.set_ylim(-0.08, 1.15)
-    ax.set_xlim(-0.5, max_c * 1.12 + 1)
+    ax.set_xlim(-0.5, max_c * 1.05)
     ax.yaxis.set_major_formatter(mticker.FormatStrFormatter("%.1f"))
     ax.set_title("RQ2 — Directive Conflicts vs Compliance Score\n"
                  "Ringed points = Enumeration Fallacy sites (NOMINAL)")
-    ax.legend(handles=handles, loc="upper right", fontsize=9, frameon=False)
-    ax.grid(zorder=0)
+    
+
+    ax.legend(handles=handles, 
+              loc="upper left", 
+              bbox_to_anchor=(1.02, 1), 
+              fontsize=9, 
+              frameon=False)
+
+    ax.grid(zorder=0, alpha=0.3)
+    
+    # Use tight_layout or subplots_adjust to make room for the legend
+    plt.tight_layout() 
+    
     _save(fig, "fig5_conflict_scatter.png")
 
 

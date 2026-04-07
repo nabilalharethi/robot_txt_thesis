@@ -194,7 +194,7 @@ def print_summary_statistics(df):
         if "gap_identified" in valid_df.columns:
             fallacy = int((valid_df["gap_identified"] == True).sum())
             print(f"\n  {bold('► ENUMERATION FALLACY')}  {yellow(str(fallacy))} sites")
-            print(f"    {dim('Intended opt-out present but semantically ineffective')}")
+            print(f"    {dim('opt-out signal present but semantically ineffective under RFC 9309')}")
 
     print(bold(_sep("═")))
 
@@ -214,7 +214,8 @@ def print_compliance_report(metrics):
 
     total = max(metrics.get("total_sites", 1), 1)
     print(f"\n  {'Dataset':<28} {total} sites")
-    print(f"  {'Intended opt-out rate':<28} {metrics.get('intended_rate', 0):.1f}%")
+    print(f"  {'Strong signal rate':<28} {metrics.get('strong_signal_rate', 0):.1f}%  (named AI bot)")
+    print(f"  {'Weak signal rate':<28} {metrics.get('weak_signal_rate', 0):.1f}%  (wildcard only)")
     print(f"  {'Effective opt-out rate':<28} "
           f"{green(str(round(metrics.get('effective_rate', 0), 1)) + '%')}")
 
@@ -226,7 +227,7 @@ def print_compliance_report(metrics):
           f"{red(f'{gap_n}/{total}  ({gap_pct:.1f}%)')}")
     print(f"  {bold('► Enum. Fallacy')}    "
           f"{yellow(str(ef) + ' sites')}  "
-          f"{dim('(intended ≠ effective opt-out)')}")
+          f"{dim('(opt-out signal present but RFC 9309 parsing finds no effective block)')}")
 
     by_country = metrics.get("by_country", {})
     if by_country:

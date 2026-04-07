@@ -15,18 +15,14 @@ logger = logging.getLogger(__name__)
 
 
 RESULT_COLUMNS = [
-    # Identity
     "name", "url", "country", "group",
-    # Classification (RQ1)
     "strategy", "strategy_tier", "tier_label", "tier_description",
-    # Redirect
     "redirected", "redirect_target",
-    # Conflicts (RQ2)
     "conflict_count", "has_conflicts", "conflict_types", "conflict_summary",
-    # Compliance (RQ3)
     "compliance_status", "compliance_score", "gap_identified",
-    "intended_optout", "effective_optout", "conflict_impact", "eu_ai_act_ref",
-    # Meta
+    "signal_strength",    
+    "has_optout_signal",  
+    "effective_optout", "conflict_impact", "eu_ai_act_ref",
     "timestamp", "error_type",
 ]
 
