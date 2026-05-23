@@ -3,175 +3,327 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>SCA -- Semantic Configuration Analyzer</title>
-<!-- Google Fonts -->
+<title>SCA — Semantic Configuration Analyzer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
-<!-- Chart.js Library -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<!-- External CSS -->
 <link rel="stylesheet" href="css/style.css" />
+<link rel="stylesheet" href="css/advisor.css" />
 </head>
 <body>
 <div class="layout">
-<aside class="sidebar">
-  <div class="sidebar-logo">
-    <div class="title">SCA v1.0</div>
-    <div class="sub">Semantic Configuration Analyzer</div>
-  </div>
-  <nav class="nav">
-    <div class="nav-label">Analysis</div>
-    <button class="nav-item active" onclick="showPage('analyze',this)"><span class="icon">&#8981;</span> Analyze URL</button>
-    <div class="nav-label">Thesis</div>
-    <button class="nav-item" onclick="showPage('about',this)"><span class="icon">&#9432;</span> About this Tool</button>
-    <button class="nav-item" onclick="showPage('legend',this)"><span class="icon">&#9633;</span> Tier Legend</button>
-  </nav>
-  <div class="sidebar-footer">2DV50E &middot; VT 2026<br>Al-Harethi &amp; Devlet</div>
-</aside>
 
-<main class="main">
-
-<!-- ANALYZE -->
-<div class="page active" id="page-analyze">
-  <div class="page-heading">Analyze a URL</div>
-  <div class="analyze-box">
-    <h3>Check any news site's robots.txt</h3>
-    <div class="field">
-      <label>Homepage URL -- enter any news website</label>
-      <input type="text" id="input-url" placeholder="https://www.bbc.co.uk" />
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="title">SCA v1.0</div>
+      <div class="sub">Semantic Configuration Analyzer</div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div class="field">
-        <label>Site name (optional)</label>
-        <input type="text" id="input-name" placeholder="BBC News" />
+    <nav class="nav">
+      <div class="nav-label">Analysis</div>
+      <button class="nav-item active" onclick="showPage('analyze',this)">
+        <span class="icon">&#8981;</span> Analyze URL
+      </button>
+      <div class="nav-label">Thesis</div>
+      <button class="nav-item" onclick="showPage('about',this)">
+        <span class="icon">&#9432;</span> About this Tool
+      </button>
+      <button class="nav-item" onclick="showPage('legend',this)">
+        <span class="icon">&#9633;</span> Tier Legend
+      </button>
+    </nav>
+    <div class="sidebar-footer">2DV50E &middot; VT 2026<br>Al-Harethi &amp; Devlet</div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <main class="main">
+
+    <!-- ══ Analyze Page ══ -->
+    <div class="page active" id="page-analyze">
+      <div class="page-title">Analysis</div>
+      <div class="page-heading">Analyze a URL</div>
+
+      <div class="analyze-box">
+        <h3>Check any news site's robots.txt</h3>
+        <div class="field">
+          <label>Homepage URL — enter any news website</label>
+          <input type="text" id="input-url" placeholder="https://www.bbc.co.uk" />
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="field">
+            <label>Site name (optional)</label>
+            <input type="text" id="input-name" placeholder="BBC News" />
+          </div>
+          <div class="field">
+            <label>Country (optional)</label>
+            <input type="text" id="input-group" placeholder="UK" />
+          </div>
+        </div>
+        <button class="btn-primary" id="btn-analyze" onclick="runSingleAnalysis()">
+          <span id="analyze-spinner" class="spinner" style="display:none"></span>
+          Analyze robots.txt
+        </button>
+        <div id="analyze-error" class="error-msg" style="display:none"></div>
       </div>
-      <div class="field">
-        <label>Country (optional)</label>
-        <input type="text" id="input-group" placeholder="UK" />
-      </div>
-    </div>
-    <button class="btn-primary" id="btn-analyze" onclick="runSingleAnalysis()">
-      <span id="analyze-spinner" style="display:none" class="spinner"></span>
-      Analyze robots.txt
-    </button>
-  </div>
-  <div id="single-result"></div>
-  <div style="max-width:680px;margin-top:28px;padding-top:24px;border-top:1px solid var(--border)">
-    <div style="font-size:11px;font-family:var(--mono);color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px">How to read the result</div>
-    <div style="font-size:12px;color:var(--muted);line-height:1.8">
-      The analyzer fetches <code>/robots.txt</code> from the URL and runs three checks:<br><br>
-      <strong style="color:var(--text)">1. Tier (RQ1)</strong> -- assigns a defense tier 1-5 based on which bot layers are blocked and how.<br><br>
-      <strong style="color:var(--text)">2. Conflicts (RQ2)</strong> -- detects five classes of directive contradictions that make protection semantically ineffective despite its appearance.<br><br>
-      <strong style="color:var(--text)">3. Compliance score (RQ3)</strong> -- weighted 0.0-1.0 across three bot layers: APP layer 35%, INFRA layer 45%, Google AI 20%. A site blocking only GPTBot scores 0.35, not 1.0.
-    </div>
-  </div>
-</div>
 
+      <div id="single-result"></div>
 
-
-
-<!-- ABOUT -->
-<div class="page" id="page-about">
-  <div class="page-title">Thesis context</div>
-  <div class="page-heading">About this Tool</div>
-
-  <div class="about-section">
-    <h2>What this thesis does</h2>
-    <p>This tool is the artifact of the bachelor thesis <em>"Semantic Configuration Analysis of robots.txt for EU AI Act Compliance"</em> (2DV50E, Linnaeus University, VT 2026). It investigates whether European news publishers are effectively protecting their content from AI training data crawlers using the Robots Exclusion Protocol.</p>
-    <p>Most existing tools check robots.txt in a <strong>binary way</strong> -- a bot is either blocked or it is not. This tool performs <strong>semantic analysis</strong>: it checks whether the configuration is internally consistent under RFC 9309 parsing rules and whether the protection actually holds, not just on the surface.</p>
-    <p>The <strong>EU AI Act (Recital 105 / Article 53(1)(c))</strong> requires GPAI model providers to respect machine-readable opt-outs. robots.txt is the primary such mechanism. This tool measures how many publishers have a valid, effective opt-out.</p>
-  </div>
-
-  <div class="about-section">
-    <h2>What the results mean</h2>
-
-    <div style="background:var(--surface2);border-radius:8px;padding:20px;margin-bottom:16px">
-      <div style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px">Compliance status</div>
-      <table class="status-table">
-        <tr><td class="status-label" style="color:var(--accent)">COMPLIANT</td><td style="color:var(--muted)">All three bot layers blocked without internal contradictions. Valid machine-readable opt-out under EU AI Act Recital 105. AI training crawlers are legally required to respect this.</td></tr>
-        <tr><td class="status-label" style="color:var(--warn)">NOMINAL</td><td style="color:var(--muted)">The site names AI bots (showing intent) but HIGH severity conflicts make blocking semantically ineffective. The <strong style="color:var(--text)">Enumeration Fallacy</strong> -- the site believes it is protected but is not. Binary tools would count this as compliant; the SCA does not.</td></tr>
-        <tr><td class="status-label" style="color:var(--warn)">PARTIAL</td><td style="color:var(--muted)">Some layers blocked, not all. Score between 0.01 and 0.99. Partial compliance gap under Article 53(1)(c).</td></tr>
-        <td class="status-label" style="color:var(--danger)">NON_COMPLIANT</td><td style="color:var(--muted)">No effective AI opt-out. All AI training collectors have full access. No reservation of rights exists under EU AI Act Recital 105.</td></tr>
-      </table>
-    </div>
-
-    <div style="background:var(--surface2);border-radius:8px;padding:20px;margin-bottom:16px">
-      <div style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px">Compliance score (0.0 to 1.0)</div>
-      <p style="font-size:12px;color:var(--muted);line-height:1.8;margin-bottom:14px">A weighted score across three crawling layers. Blocking only ChatGPT/ClaudeBot but not CCBot scores <strong style="color:var(--text)">0.35</strong> -- it blocks the visible bots but misses the infrastructure collectors responsible for most training data harvesting. Score 1.0 means all three layers effectively blocked.</p>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
-        <div style="background:var(--surface);border-radius:6px;padding:12px;border:1px solid var(--border)"><div style="font-size:10px;font-family:var(--mono);color:var(--muted);margin-bottom:4px">APP LAYER &middot; 35%</div><div style="font-size:11px;color:var(--text)">GPTBot, ClaudeBot, ChatGPT-User, OAI-SearchBot, PerplexityBot, DeepSeekBot...</div></div>
-        <div style="background:var(--surface);border-radius:6px;padding:12px;border:1px solid rgba(0,229,160,.2)"><div style="font-size:10px;font-family:var(--mono);color:var(--accent);margin-bottom:4px">INFRA LAYER &middot; 45%</div><div style="font-size:11px;color:var(--text)">CCBot, Bytespider, FacebookBot, Diffbot, Omgilibot, AmazonBot, Timpibot...</div></div>
-        <div style="background:var(--surface);border-radius:6px;padding:12px;border:1px solid var(--border)"><div style="font-size:10px;font-family:var(--mono);color:var(--muted);margin-bottom:4px">GOOGLE AI &middot; 20%</div><div style="font-size:11px;color:var(--text)">Google-Extended, Google-CloudVertexBot, Gemini-Deep-Research</div></div>
+      <div class="how-to-read">
+        <div class="how-label">How to read the result</div>
+        <div class="how-body">
+          The analyzer fetches <code>/robots.txt</code> from the URL and runs three checks:<br><br>
+          <strong>1. Tier (RQ1)</strong> — assigns a defense tier 1–5 based on which bot layers are blocked and how.<br><br>
+          <strong>2. Conflicts (RQ2)</strong> — detects five classes of directive contradictions that make protection semantically ineffective despite its appearance.<br><br>
+          <strong>3. Compliance score (RQ3)</strong> — weighted 0.0–1.0 across three bot layers: APP layer 35%, INFRA layer 45%, Google AI 20%. A site blocking only GPTBot scores 0.35, not 1.0.<br><br>
+          <strong>4. Improvement advisor</strong> — after the result, a targeted guide explains exactly what to change and shows ready-to-copy robots.txt snippets for your specific situation.
+        </div>
       </div>
     </div>
 
-    <div style="background:var(--surface2);border-radius:8px;padding:20px">
-      <div style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px">Conflict types</div>
-      <table class="status-table">
-        <tr><td class="status-label" style="color:var(--danger);font-size:10px">WILDCARD_OVERRIDE<br>HIGH</td><td style="color:var(--muted)">A wildcard <code>Allow: /</code> re-grants access to specifically blocked bots. The core mechanism of the Enumeration Fallacy. Most dangerous conflict type.</td></tr>
-        <tr><td class="status-label" style="color:var(--warn);font-size:10px">DUPLICATE_SECTION<br>MEDIUM</td><td style="color:var(--muted)">Same User-agent declared in multiple sections. RFC 9309 requires merging but non-compliant crawlers may read only one section, potentially the permissive one.</td></tr>
-        <tr><td class="status-label" style="color:var(--danger);font-size:10px">ALLOW_DISALLOW<br>HIGH</td><td style="color:var(--muted)">Same path in both Allow and Disallow for one agent. RFC 9309 says Allow wins -- contrary to blocking intent.</td></tr>
-        <tr><td class="status-label" style="color:var(--muted);font-size:10px">ORDERING_VIOLATION<br>LOW</td><td style="color:var(--muted)"><code>Disallow: /</code> combined with specific Allow rules. RFC uses specificity not order. Operators expecting .htaccess behavior are surprised.</td></tr>
-        <tr><td class="status-label" style="color:var(--danger);font-size:10px">EMPTY_DISALLOW<br>HIGH</td><td style="color:var(--muted)">Empty <code>Disallow:</code> (means allow all) mixed with real blocking rules. Nullifies intent in RFC-compliant parsers.</td></tr>
-      </table>
-    </div>
-  </div>
+    <!-- ══ About Page ══ -->
+    <div class="page" id="page-about">
+      <div class="page-title">Thesis context</div>
+      <div class="page-heading">About this Tool</div>
 
-  <div class="about-section">
-    <h2>How this differs from other tools</h2>
-    <div class="diff-grid">
-      <div class="diff-card">
-        <h4>Existing binary parsers</h4>
-        <p>Standard tools check whether a specific bot appears with a Disallow directive. They answer "Is GPTBot blocked?" with yes or no. They do not check whether the block is semantically effective, whether other directives cancel it, or whether the INFRA layer is also covered.</p>
+      <div class="about-section">
+        <h2>What this thesis does</h2>
+        <p>This tool is the artifact of the bachelor thesis <em>"Semantic Configuration Analysis of robots.txt for EU AI Act Compliance"</em> (2DV50E, Linnaeus University, VT 2026). It investigates whether European news publishers are effectively protecting their content from AI training data crawlers using the Robots Exclusion Protocol.</p>
+        <p>Most existing tools check robots.txt in a <strong>binary way</strong> — a bot is either blocked or it is not. This tool performs <strong>semantic analysis</strong>: it checks whether the configuration is internally consistent under RFC 9309 parsing rules and whether the protection actually holds, not just on the surface.</p>
       </div>
-      <div class="diff-card hl">
-        <h4>This tool -- semantic analysis</h4>
-        <p>The SCA parses robots.txt into a structured section map and evaluates it as a semantic unit. It checks all five conflict classes, evaluates three distinct bot layers with weighted importance, and distinguishes between <em>intended</em> and <em>effective</em> protection. A site can appear protected while being fully open.</p>
-      </div>
-      <div class="diff-card hl">
-        <h4>This thesis contribution</h4>
-        <p>By introducing the Enumeration Fallacy and the six-tier Defense taxonomy, this thesis shows that binary measurement overstates compliance. The NOMINAL category identifies sites that binary tools mark as protected but the SCA reveals as vulnerable -- a gap invisible to all prior work.</p>
-      </div>
-    </div>
-  </div>
-</div>
 
-<!-- LEGEND -->
-<div class="page" id="page-legend">
-  <div class="page-title">Reference</div>
-  <div class="page-heading">Tier Legend &amp; Methodology</div>
-  <div style="max-width:680px">
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:24px">
-      <div style="padding:14px 18px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Defense Tier Classification</div>
-      <table style="width:100%;font-size:12px;border-collapse:collapse">
-        <thead><tr>
-          <th style="padding:10px 16px;text-align:left;font-size:10px;color:var(--muted);font-family:var(--mono);border-bottom:1px solid var(--border)">Tier</th>
-          <th style="padding:10px 16px;text-align:left;font-size:10px;color:var(--muted);font-family:var(--mono);border-bottom:1px solid var(--border)">Label</th>
-          <th style="padding:10px 16px;text-align:left;font-size:10px;color:var(--muted);font-family:var(--mono);border-bottom:1px solid var(--border)">Description</th>
-          <th style="padding:10px 16px;text-align:left;font-size:10px;color:var(--muted);font-family:var(--mono);border-bottom:1px solid var(--border)">EU AI Act</th>
-        </tr></thead>
-        <tbody>
-          <tr style="border-bottom:1px solid var(--border)"><td style="padding:10px 16px"><span class="tier-pill tp5">Tier 5</span></td><td style="padding:10px 16px;color:var(--text)">True Nuclear</td><td style="padding:10px 16px;color:var(--muted)">Wildcard block, no exceptions. Blocks everything including Googlebot. Maximum protection, SEO sacrificed.</td><td style="padding:10px 16px;color:var(--accent)">COMPLIANT</td></tr>
-          <tr style="border-bottom:1px solid var(--border)"><td style="padding:10px 16px"><span class="tier-pill tp4b">Tier 4b</span></td><td style="padding:10px 16px;color:var(--text)">Secured Nuclear</td><td style="padding:10px 16px;color:var(--muted)">Wildcard + Googlebot exception + Google-Extended blocked. Preserves SEO, blocks Gemini training.</td><td style="padding:10px 16px;color:var(--accent)">COMPLIANT</td></tr>
-          <tr style="border-bottom:1px solid var(--border)"><td style="padding:10px 16px;font-family:var(--mono);font-size:11px;color:#80aaff">Tier 4a</td><td style="padding:10px 16px;color:var(--text)">SEO-Captive</td><td style="padding:10px 16px;color:var(--muted)">Wildcard + Googlebot exception but Google-Extended NOT blocked. Vulnerable to Gemini training.</td><td style="padding:10px 16px;color:var(--warn)">PARTIAL</td></tr>
-          <tr style="border-bottom:1px solid var(--border)"><td style="padding:10px 16px"><span class="tier-pill tp3">Tier 3</span></td><td style="padding:10px 16px;color:var(--text)">Surgical</td><td style="padding:10px 16px;color:var(--muted)">No wildcard. Explicit named blocks for both APP-layer and INFRA-layer bots. Targeted and effective.</td><td style="padding:10px 16px;color:var(--accent)">COMPLIANT</td></tr>
-          <tr style="border-bottom:1px solid var(--border)"><td style="padding:10px 16px;font-family:var(--mono);font-size:11px;color:var(--warn)">Tier 2</td><td style="padding:10px 16px;color:var(--text)">Porous</td><td style="padding:10px 16px;color:var(--muted)">Only APP-layer (GPTBot etc.) blocked. INFRA-layer (CCBot etc.) still has full access. Performative defence.</td><td style="padding:10px 16px;color:var(--warn)">PARTIAL</td></tr>
-          <tr><td style="padding:10px 16px"><span class="tier-pill tp1">Tier 1</span></td><td style="padding:10px 16px;color:var(--text)">Open</td><td style="padding:10px 16px;color:var(--muted)">No AI-specific blocking. All crawlers have full access. No machine-readable opt-out exists.</td><td style="padding:10px 16px;color:var(--danger)">NON-COMPLIANT</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden">
-      <div style="padding:14px 18px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Layer Weights -- Compliance Score</div>
-      <div style="padding:16px 18px;display:flex;flex-direction:column;gap:14px">
-        <div><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:5px"><span>APP LAYER -- GPTBot, ClaudeBot, ChatGPT-User, OAI-SearchBot, PerplexityBot, YouBot, DeepSeekBot, MistralAI-User</span><span>35%</span></div><div style="background:var(--surface2);border-radius:3px;height:5px;overflow:hidden"><div style="width:35%;height:100%;background:var(--accent);border-radius:3px"></div></div></div>
-        <div><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:5px"><span>INFRA LAYER -- CCBot, FacebookBot, Bytespider, Applebot, Diffbot, Omgilibot, AmazonBot, Timpibot, ICC-Crawler... (most commonly missed)</span><span>45%</span></div><div style="background:var(--surface2);border-radius:3px;height:5px;overflow:hidden"><div style="width:45%;height:100%;background:var(--info);border-radius:3px"></div></div></div>
-        <div><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:5px"><span>GOOGLE AI -- Google-Extended, Google-CloudVertexBot, Gemini-Deep-Research</span><span>20%</span></div><div style="background:var(--surface2);border-radius:3px;height:5px;overflow:hidden"><div style="width:20%;height:100%;background:var(--warn);border-radius:3px"></div></div></div>
+      <div class="about-section">
+        <h2>What the results mean</h2>
+
+        <div class="about-card">
+          <div class="about-card-title">Compliance status</div>
+          <table class="status-table">
+            <tr>
+              <td class="status-label ok">COMPLIANT</td>
+              <td>
+                <strong>All three bot layers are blocked and no conflicts cancel that protection.</strong><br>
+                The robots.txt file is semantically effective — not just syntactically present. All crawler categories
+                (AI assistants, infrastructure harvesters, and Google AI) are denied access and no internal
+                Allow directives override those blocks. This is the only status that represents genuine protection.
+              </td>
+            </tr>
+            <tr>
+              <td class="status-label warn">NOMINAL</td>
+              <td>
+                <strong>The Enumeration Fallacy — protection that appears real but is not.</strong><br>
+                The site has written blocking rules but they are cancelled by competing Allow directives.
+                Under RFC 9309, when an Allow and Disallow cover the same path at equal specificity,
+                Allow always wins — silently. A correctly behaving crawler reads this file as granting
+                full access, even though Disallow entries are present. Binary tools would classify this
+                site as protected. The SCA does not. The fix is almost always a single directive removal.
+              </td>
+            </tr>
+            <tr>
+              <td class="status-label warn">PARTIAL</td>
+              <td>
+                <strong>Some crawler categories are blocked but not all.</strong><br>
+                The compliance score reflects which layers are covered. Blocking GPTBot (APP layer, 35%)
+                while leaving CCBot unblocked still means the infrastructure harvesters responsible for
+                most large-scale training data collection have full access. Partial coverage is better
+                than nothing but leaves real gaps. The score shows exactly how large those gaps are.
+              </td>
+            </tr>
+            <tr>
+              <td class="status-label danger">NON_COMPLIANT</td>
+              <td>
+                <strong>No AI protection exists.</strong><br>
+                The robots.txt file either has no AI-related directives or is absent. Every
+                crawler — from the user-facing AI assistants to the background training harvesters
+                scraping the web at scale — has unrestricted access. The content on this site is
+                freely available for use in AI model training. A single line of robots.txt is
+                sufficient to change this.
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="about-card">
+          <div class="about-card-title">Compliance score (0.0 to 1.0)</div>
+          <p style="font-size:12px;color:var(--muted);line-height:1.8;margin-bottom:14px">
+            A weighted score across three crawler layers. The weights reflect the layers' actual contribution
+            to AI training data collection. The INFRA layer (CCBot, Bytespider etc.) carries the highest weight
+            at 45% because these crawlers are responsible for the majority of bulk training data harvesting —
+            they are less visible than GPTBot but significantly more consequential in volume.
+            A site that only blocks the APP layer scores 0.35, not 1.0, because the dominant
+            data collection pathway is still open.
+          </p>
+          <div class="layers-grid">
+            <div class="layer-cell">
+              <div class="layer-name">APP LAYER &middot; 35%</div>
+              <div style="font-size:11px;color:var(--text)">GPTBot, ClaudeBot, ChatGPT-User, OAI-SearchBot, PerplexityBot, DeepSeekBot&hellip;</div>
+            </div>
+            <div class="layer-cell layer-cell--accent">
+              <div class="layer-name" style="color:var(--accent)">INFRA LAYER &middot; 45%</div>
+              <div style="font-size:11px;color:var(--text)">CCBot, Bytespider, FacebookBot, Diffbot, Omgilibot, AmazonBot, Timpibot&hellip;</div>
+            </div>
+            <div class="layer-cell">
+              <div class="layer-name">GOOGLE AI &middot; 20%</div>
+              <div style="font-size:11px;color:var(--text)">Google-Extended, Google-CloudVertexBot, Gemini-Deep-Research</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="about-card">
+          <div class="about-card-title">Conflict types — why more rules can mean less protection</div>
+          <table class="status-table">
+            <tr>
+              <td class="status-label danger small">WILDCARD_OVERRIDE<br><span class="sev-tag">HIGH</span></td>
+              <td>
+                A wildcard <code>Allow: /</code> appears in the same section as specific <code>Disallow</code> entries.
+                Because the wildcard matches every path, it always ties with or beats the specificity of any Disallow,
+                causing the Allow to win. This is the classic Enumeration Fallacy pattern — the site looks protected
+                but every named bot has full access.
+              </td>
+            </tr>
+            <tr>
+              <td class="status-label warn small">DUPLICATE_SECTION<br><span class="sev-tag">MEDIUM</span></td>
+              <td>
+                The same User-agent appears in more than one section. RFC 9309 requires parsers to merge all matching
+                sections but some crawlers only process the first or last match. If one section blocks and another allows,
+                the outcome depends on which section the crawler reads. Consolidate into one block per agent.
+              </td>
+            </tr>
+            <tr>
+              <td class="status-label danger small">ALLOW_DISALLOW<br><span class="sev-tag">HIGH</span></td>
+              <td>
+                An Allow and Disallow directive cover the same path for the same agent. RFC 9309 specifies that
+                when specificity is equal, Allow wins. If both point to <code>/</code>, Allow wins silently —
+                even though the intent is to block. Removing the Allow entry fixes this immediately.
+              </td>
+            </tr>
+            <tr>
+              <td class="status-label hint small">PARTIAL_BLOCK<br><span class="sev-tag">LOW</span></td>
+              <td>
+                A <code>Disallow: /</code> appears alongside an <code>Allow: /</code> of identical path length in the same section.
+                Because they tie on specificity, Allow wins by protocol default. The bot receives access
+                despite the presence of a Disallow entry.
+              </td>
+            </tr>
+            <tr>
+              <td class="status-label danger small">EMPTY_DISALLOW<br><span class="sev-tag">HIGH</span></td>
+              <td>
+                An empty <code>Disallow:</code> directive (no path) means "allow everything" in RFC 9309.
+                When this appears alongside real blocking rules, it functions as a silent allow-all that
+                a compliant crawler must honour, nullifying all other Disallow entries in that section.
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="about-section">
+        <h2>How this differs from other tools</h2>
+        <div class="diff-grid">
+          <div class="diff-card">
+            <h4>Existing binary parsers</h4>
+            <p>Standard tools check whether a specific bot appears with a Disallow directive. They answer "Is GPTBot blocked?" with yes or no. They do not check whether the block is semantically effective, whether other directives cancel it, or whether the INFRA layer is also covered.</p>
+          </div>
+          <div class="diff-card hl">
+            <h4>This tool — semantic analysis</h4>
+            <p>The SCA parses robots.txt into a structured section map and evaluates it as a semantic unit. It checks all five conflict classes, evaluates three distinct bot layers with weighted importance, and distinguishes between <em>intended</em> and <em>effective</em> protection. A site can appear protected while being fully open.</p>
+          </div>
+          <div class="diff-card hl">
+            <h4>The Improvement Advisor</h4>
+            <p>After each analysis the tool generates a personalised improvement guide: it identifies exactly what is wrong, explains why it matters, recommends the upgrade path, and provides ready-to-copy robots.txt snippets tailored to the site's current tier. No other parser produces actionable repair instructions.</p>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-</div>
 
-</main>
+    <!-- ══ Legend Page ══ -->
+    <div class="page" id="page-legend">
+      <div class="page-title">Reference</div>
+      <div class="page-heading">Tier Legend &amp; Methodology</div>
+      <div style="max-width:680px">
+
+        <div class="results-table-wrap" style="margin-bottom:24px">
+          <div class="table-header">
+            <h4>Defense Tier Classification</h4>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Tier</th>
+                <th>Label</th>
+                <th>Description</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="tier-pill tp5">Tier 5</span></td>
+                <td>True Nuclear</td>
+                <td style="color:var(--muted)">Wildcard block, no exceptions. Blocks everything including Googlebot. Maximum protection, SEO sacrificed. Best for sites that do not rely on search traffic.</td>
+                <td><span class="badge badge-compliant">COMPLIANT</span></td>
+              </tr>
+              <tr>
+                <td><span class="tier-pill tp4b">Tier 4b</span></td>
+                <td>Secured Nuclear</td>
+                <td style="color:var(--muted)">Wildcard + Googlebot exception + Google-Extended blocked. Preserves search visibility while blocking all AI training crawlers. <strong>Recommended for most publishers.</strong></td>
+                <td><span class="badge badge-compliant">COMPLIANT</span></td>
+              </tr>
+              <tr>
+                <td><span class="tier-pill tp4a">Tier 4a</span></td>
+                <td>SEO-Captive</td>
+                <td style="color:var(--muted)">Wildcard + Googlebot exception but Google-Extended NOT blocked. One directive away from Tier 4b. Google's AI training crawler still has access.</td>
+                <td><span class="badge badge-partial">PARTIAL</span></td>
+              </tr>
+              <tr>
+                <td><span class="tier-pill tp3">Tier 3</span></td>
+                <td>Surgical</td>
+                <td style="color:var(--muted)">No wildcard. Explicit named blocks for both APP-layer and INFRA-layer bots. Effective when maintained, but requires regular updates as new crawlers emerge.</td>
+                <td><span class="badge badge-compliant">COMPLIANT</span></td>
+              </tr>
+              <tr>
+                <td><span class="tier-pill tp2">Tier 2</span></td>
+                <td>Porous</td>
+                <td style="color:var(--muted)">Only APP-layer bots blocked. INFRA-layer crawlers still have full access. Blocks the visible, named AI assistants while missing the infrastructure harvesters doing most of the data collection.</td>
+                <td><span class="badge badge-partial">PARTIAL</span></td>
+              </tr>
+              <tr>
+                <td><span class="tier-pill tp1">Tier 1</span></td>
+                <td>Open</td>
+                <td style="color:var(--muted)">No AI-specific blocking. All crawlers have unrestricted access. No opt-out signal exists in the robots.txt file.</td>
+                <td><span class="badge badge-non_compliant">NON-COMPLIANT</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="results-table-wrap">
+          <div class="table-header"><h4>Layer Weights — Compliance Score</h4></div>
+          <div style="padding:16px 18px;display:flex;flex-direction:column;gap:16px">
+            <div>
+              <div class="score-label">
+                <span>APP LAYER — GPTBot, ClaudeBot, ChatGPT-User, OAI-SearchBot, PerplexityBot, YouBot, DeepSeekBot, MistralAI-User</span>
+                <span>35%</span>
+              </div>
+              <div class="score-track"><div class="score-fill" style="width:35%;background:var(--accent)"></div></div>
+            </div>
+            <div>
+              <div class="score-label">
+                <span>INFRA LAYER — CCBot, FacebookBot, Bytespider, Applebot, Diffbot, Omgilibot, AmazonBot, Timpibot, ICC-Crawler&hellip; (most commonly missed)</span>
+                <span>45%</span>
+              </div>
+              <div class="score-track"><div class="score-fill" style="width:45%;background:#1D4ED8"></div></div>
+            </div>
+            <div>
+              <div class="score-label">
+                <span>GOOGLE AI — Google-Extended, Google-CloudVertexBot, Gemini-Deep-Research</span>
+                <span>20%</span>
+              </div>
+              <div class="score-track"><div class="score-fill" style="width:20%;background:var(--warn)"></div></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
 </div>
 
 <!-- Detail drawer -->
@@ -183,6 +335,5 @@
 </div>
 
 <script src="js/script.js"></script>
-
 </body>
 </html>

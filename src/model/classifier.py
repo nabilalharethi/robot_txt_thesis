@@ -78,33 +78,34 @@ _NON_RESETTING_DIRECTIVES = frozenset([
 
 
 def _parse_sections(lines):
-    """
-    Parse robots.txt lines into a user-agent -> directives map.
-    Fixes the case-sensitivity bug: User-agents are case-insensitive, paths are not.
-    """
     sections = {}
     current_agents = []
+    last_was_agent = False
 
     for line in lines:
         line = line.strip()
         if not line or line.startswith("#"):
             continue
 
-        # Agents are case-insensitive
         if line.lower().startswith("user-agent:"):
-            agent = line.split(":", 1)[1].strip().lower() 
+            if not last_was_agent:
+                current_agents = []          # ← start a new group
+            agent = line.split(":", 1)[1].strip().lower()
             current_agents.append(agent)
             sections.setdefault(agent, [])
+            last_was_agent = True
 
-        # Directives preserve their original case for path evaluation
         elif line.lower().startswith(("disallow:", "allow:")):
             for agent in current_agents:
                 sections.setdefault(agent, []).append(line)
+            last_was_agent = False
 
-        elif any(line.lower().startswith(prefix) for prefix in _NON_RESETTING_DIRECTIVES):
-            pass
+        elif any(line.lower().startswith(p) for p in _NON_RESETTING_DIRECTIVES):
+            last_was_agent = False
+
         else:
             current_agents = []
+            last_was_agent = False
 
     return sections
 
@@ -127,10 +128,11 @@ def _is_fully_blocked(directives):
                 
         elif d_lower.startswith("disallow:"):
             path = d.split(":", 1)[1].strip()
-            # Empty disallow means allow all. It overrides everything.
+            # FIX: Empty disallow means allow all (path length 0). 
+            # Do NOT return False immediately, as a longer rule might override it.
             if not path:
-                return False 
-            if path == "/" or path.startswith("/*"):
+                allow_len = max(allow_len, 0) 
+            elif path == "/" or path.startswith("/*"):
                 disallow_len = max(disallow_len, len(path))
 
     # If no root disallow exists, it is not blocked.
