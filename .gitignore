@@ -10,6 +10,7 @@
 *.userosscache
 *.sln.docstates
 *.env
+*.txt
 *.log
 *.csv
 *.png
