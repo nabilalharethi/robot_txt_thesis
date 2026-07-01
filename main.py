@@ -43,7 +43,7 @@ def main():
     sites = load_from_robots_csv(CSV_PATH, log=logger)
 
     # Temporary test
-    sites = sites[:200]
+    sites = load_from_robots_csv(CSV_PATH, log=logger)
 
     if not sites:
         logger.error(f"No valid sites loaded from {CSV_PATH} — exiting")

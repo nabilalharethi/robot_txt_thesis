@@ -1,6 +1,5 @@
 """
 scraper.py — Fetches robots.txt over HTTP with retry on transient failures.
-
 """
 
 import requests
@@ -16,8 +15,8 @@ from tenacity import (
 
 logger = logging.getLogger(__name__)
 
-USER_AGENT = "SCA-ResearchBot (Academic Thesis)"
-TIMEOUT = 10    # seconds
+USER_AGENT = "Mozilla/5.0 (compatible; robots-txt-audit/1.0)"
+TIMEOUT = (3, 10)
 MAX_RETRIES = 3
 
 
@@ -28,15 +27,6 @@ MAX_RETRIES = 3
     reraise=True,
 )
 def _fetch_with_retry(robots_url):
-    """
-    Performs the actual HTTP GET. Lets RequestException propagate so
-    tenacity's retry/backoff actually triggers on transient failures
-    (timeouts, connection errors, 5xx via raise_for_status).
-
-    404 is treated as a valid, non-transient response and returned as-is
-    without retrying — robots.txt simply not existing isn't a network
-    problem that a retry would fix.
-    """
     response = requests.get(
         robots_url,
         headers={"User-Agent": USER_AGENT},
@@ -63,8 +53,7 @@ def fetch_robots_txt(url):
     except RequestException as e:
         error_code = f"ERROR_{type(e).__name__}"
         logger.error(
-            f"Network error fetching {robots_url} after {MAX_RETRIES} "
-            f"attempt(s): {error_code} — {e}"
+            f"Network error fetching {robots_url} after {MAX_RETRIES} attempt(s): {error_code} — {e}"
         )
         return None, False, error_code
 
@@ -76,14 +65,13 @@ def fetch_robots_txt(url):
     redirect_info = None
 
     if response.history:
-        final_domain = response.url.split("/")[2]
-        original_domain = url.split("/")[2]
+        final_domain = urlparse(response.url).netloc
+        original_domain = urlparse(url).netloc
+
         is_redirected = final_domain != original_domain
 
         if is_redirected:
             redirect_info = final_domain
-            logger.info(
-                f"Domain redirect: {original_domain} → {final_domain}"
-            )
+            logger.info(f"Domain redirect: {original_domain} → {final_domain}")
 
-    return response.text.lower(), is_redirected, redirect_info
+    return response.text, is_redirected, redirect_info
