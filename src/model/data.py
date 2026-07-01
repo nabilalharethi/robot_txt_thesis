@@ -1,18 +1,16 @@
-
-""""
-Data loading and processing functions.
+"""
+data.py — Data loading and processing functions.
 
 - Load target sites from targets.json
 - Load and clean results CSV for visualization / validation
 - No network calls, no display logic
+
 """
 
-import json  # For reading targets.json
+import json
 import logging
 import pandas as pd
 from pathlib import Path
-
-# Module-level logger — inherits config from main.py
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +53,7 @@ def load_target_sites(ext_logger, targets_file):
         logger.error(f"ERROR: Invalid JSON in {targets_file}: {e}")
         print(f" Error: Invalid JSON in {targets_file}")
         return None
+
 
 # RESULTS I/O
 

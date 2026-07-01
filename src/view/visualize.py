@@ -1,17 +1,6 @@
 """
 visualize.py — Thesis Figures & Result Export
 
-Improvements over original:
-- Cleaner figure style: no spines, subtle grid, consistent font sizes
-- fig1: horizontal bars now sorted by protection level, labels inside bars
-- fig2: donut rebalanced — labels outside with leader lines, no overlap
-- fig3: dual bar with an annotated gap arrow and reference line
-- fig4: stacked bar sorted by gap% instead of compliant count
-- fig5: scatter uses jitter to separate overlapping points, NOMINAL ringed
-- fig6: grouped as 3 score buckets with percentage labels
-- fig7: sorted ascending by gap%, colour-coded by risk band
-- NEW fig8: layer coverage heatmap (app / infra / google_ai per country)
-- NEW generate_html_dashboard(): writes a self-contained interactive HTML file
 """
 
 import argparse
@@ -80,17 +69,6 @@ COMPLIANCE_COLORS = {
     "NOMINAL":       "#FFBE0B",
     "NON_COMPLIANT": "#D64045",
 }
-COUNTRY_NAMES = {
-    "SE":"Sweden","NO":"Norway","DK":"Denmark","FI":"Finland",
-    "GB":"UK","IE":"Ireland","DE":"Germany","AT":"Austria",
-    "CH":"Switzerland","FR":"France","NL":"Netherlands","BE":"Belgium",
-    "ES":"Spain","PT":"Portugal","IT":"Italy","GR":"Greece",
-    "PL":"Poland","CZ":"Czechia","SK":"Slovakia","HU":"Hungary",
-    "RO":"Romania","BG":"Bulgaria","HR":"Croatia","SI":"Slovenia",
-    "EE":"Estonia","LV":"Latvia","LT":"Lithuania","LU":"Luxembourg",
-    "MT":"Malta","CY":"Cyprus","MK":"N.Macedonia","EU":"EU (pan)",
-    "IS":"Iceland","AL":"Albania","RS":"Serbia","ME":"Montenegro","BA":"Bosnia",
-}
 
 logger = logging.getLogger(__name__)
 
@@ -108,13 +86,14 @@ def run_from_results(results: list, metrics: dict):
             "name":                  r.get("name"),
             "url":                   r.get("url"),
             "group":                 r.get("group"),
-            "country":               r.get("country", "??"),
+            "country":               r.get("country", "Unknown"),
             "strategy":              r.get("strategy"),
             "strategy_tier":         r.get("strategy_tier"),
             "tier_label":            r.get("tier_label"),
             "compliance_status":     comp.get("status"),
             "compliance_score":      comp.get("score"),
-            "intended_optout":       comp.get("intended_optout"),
+            "signal_strength":       comp.get("signal_strength"),
+            "has_optout_signal":     comp.get("has_optout_signal"),
             "effective_optout":      comp.get("effective_optout"),
             "gap_identified":        comp.get("gap_identified"),
             "conflict_count":        r.get("conflict_count", 0),
@@ -141,6 +120,10 @@ def run_from_csv(path: str):
     counts   = df_valid["compliance_status"].value_counts().to_dict() \
                if "compliance_status" in df_valid.columns else {}
     gap      = counts.get("NOMINAL", 0) + counts.get("NON_COMPLIANT", 0)
+
+    signal_counts = df_valid["signal_strength"].value_counts().to_dict() \
+                    if "signal_strength" in df_valid.columns else {}
+
     metrics  = {
         "total_sites":               total,
         "compliant":                 counts.get("COMPLIANT", 0),
@@ -149,10 +132,10 @@ def run_from_csv(path: str):
         "non_compliant":             counts.get("NON_COMPLIANT", 0),
         "compliance_gap":            gap,
         "gap_percentage":            round(gap / total * 100, 2) if total else 0,
-        "intended_rate":             round(df_valid["intended_optout"].sum() / total * 100, 2)
-                                     if "intended_optout" in df_valid.columns else 0,
+        "strong_signal_rate":        round(signal_counts.get("STRONG", 0) / total * 100, 2) if total else 0,
+        "weak_signal_rate":          round(signal_counts.get("WEAK", 0) / total * 100, 2) if total else 0,
         "effective_rate":            round(df_valid["effective_optout"].sum() / total * 100, 2)
-                                     if "effective_optout" in df_valid.columns else 0,
+                                     if "effective_optout" in df_valid.columns and total else 0,
         "enumeration_fallacy_count": int(df_valid["gap_identified"].sum())
                                      if "gap_identified" in df_valid.columns else 0,
     }
@@ -166,12 +149,14 @@ def _generate_all(df: pd.DataFrame, metrics: dict):
             if "strategy" in df.columns else df.copy()
     fig1_tier_distribution(valid)
     fig2_compliance_donut(valid)
-    fig3_signal_vs_effective(valid)    
-    fig4_group_stacked(valid)
+    fig3_signal_vs_effective(valid)
+    fig4_country_stacked(valid)
     fig5_conflict_scatter(valid)
     fig6_score_distribution(valid)
     fig7_country_gap(valid)
     fig8_layer_heatmap(valid)
+    fig9_group_stacked(valid)
+    fig10_group_gap(valid)
     generate_html_dashboard(valid, metrics)
 
 
@@ -233,14 +218,24 @@ def save_results(df: pd.DataFrame, metrics: dict):
             bad     = row.get("NON_COMPLIANT", 0) + row.get("NOMINAL", 0)
             tot     = int(row.sum())
             gap_pct = bad / tot * 100 if tot else 0
-            cname   = COUNTRY_NAMES.get(country, country)
-            lines.append(f"  {cname:<16} ({country})  compliant={c:>3}  gap={bad:>3}  total={tot:>3}  ({gap_pct:.0f}%)")
+            lines.append(f"  {country:<24}  compliant={c:>3}  gap={bad:>3}  total={tot:>3}  ({gap_pct:.0f}%)")
         lines.append("")
 
-    lines += ["NON-COMPLIANT / NOMINAL SITES", "-" * 40]
+    if "group" in df.columns and "compliance_status" in df.columns:
+        lines += ["COMPLIANCE BY GROUP (topic category)", "-" * 40]
+        grp = df.groupby("group")["compliance_status"].value_counts().unstack(fill_value=0)
+        for group, row in sorted(grp.iterrows()):
+            c       = row.get("COMPLIANT", 0)
+            bad     = row.get("NON_COMPLIANT", 0) + row.get("NOMINAL", 0)
+            tot     = int(row.sum())
+            gap_pct = bad / tot * 100 if tot else 0
+            lines.append(f"  {group:<24}  compliant={c:>3}  gap={bad:>3}  total={tot:>3}  ({gap_pct:.0f}%)")
+        lines.append("")
+
+    lines += ["NON-COMPLIANT / NOMINAL SITES (first 200)", "-" * 40]
     if "compliance_status" in df.columns:
         bad_df = df[df["compliance_status"].isin(["NON_COMPLIANT","NOMINAL"])]
-        for _, row in bad_df.iterrows():
+        for _, row in bad_df.head(200).iterrows():
             lines.append(
                 f"  [{row.get('compliance_status','?'):<13}]  "
                 f"{str(row.get('name','?')):<35}  "
@@ -272,7 +267,6 @@ def fig1_tier_distribution(df):
     counts = df["strategy_tier"].value_counts() if "strategy_tier" in df.columns else {}
     total  = len(df)
 
-    # Sort from most protective (Tier 5) at top to Tier 1 at bottom
     labels = [tier_long[t] for t in tier_order]
     values = [counts.get(t, 0) for t in tier_order]
     colors = [TIER_COLORS[t]   for t in tier_order]
@@ -283,7 +277,6 @@ def fig1_tier_distribution(df):
 
     for bar, val, tier in zip(bars, values, tier_order):
         pct = val / total * 100 if total else 0
-        # Label inside bar if wide enough, outside if small
         if val > total * 0.04:
             ax.text(bar.get_width() / 2,
                     bar.get_y() + bar.get_height() / 2,
@@ -331,7 +324,6 @@ def fig2_compliance_donut(df):
         pctdistance=0.8,
     )
 
-    # Donut hole with totals
     hole = plt.Circle((0, 0), 0.52, fc="white")
     ax.add_patch(hole)
     ax.text(0,  0.10, str(total), ha="center", va="center",
@@ -339,7 +331,6 @@ def fig2_compliance_donut(df):
     ax.text(0, -0.14, "sites", ha="center", va="center",
             fontsize=11, color="#888888")
 
-    # Outside labels with leader lines
     ax.legend(wedges, labels, loc="lower center",
               bbox_to_anchor=(0.5, -0.15), ncol=2, fontsize=10,
               frameon=False, handlelength=1.2)
@@ -359,7 +350,6 @@ def fig2_compliance_donut(df):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def fig3_signal_vs_effective(df):
-
     total = len(df)
 
     strong   = int((df["signal_strength"] == "STRONG").sum()) if "signal_strength" in df.columns else 0
@@ -392,7 +382,6 @@ def fig3_signal_vs_effective(df):
                 ha="center", va="bottom", fontsize=10,
                 fontweight="bold", color="#222222")
 
-    # Gap arrow between combined signal bars and effective bar
     combined_pct = strong_pct + weak_pct
     y_arrow = min(combined_pct, eff_pct) * 0.5
     ax.annotate("",
@@ -418,11 +407,10 @@ def fig3_signal_vs_effective(df):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# FIG 4 — RQ1+RQ3: Stacked Bar by Country (was: by Media Group)
-# Now sorted by gap% descending for clearer signal
+# Shared stacked-bar / gap-bar renderers (used by country AND group figures)
 # ══════════════════════════════════════════════════════════════════════════════
 
-def fig4_group_stacked(df):
+def _stacked_compliance_bar(df, group_col, title, filename, top_n=25, min_total=3):
     status_order = ["COMPLIANT","PARTIAL","NOMINAL","NON_COMPLIANT"]
     status_label = {
         "COMPLIANT":     "Compliant",
@@ -430,7 +418,10 @@ def fig4_group_stacked(df):
         "NOMINAL":       "Nominal (EF)",
         "NON_COMPLIANT": "Non-compliant",
     }
-    group_col = "country" if "country" in df.columns else "group"
+    if group_col not in df.columns or "compliance_status" not in df.columns:
+        print(f"  Skipping {filename} — missing {group_col} or compliance_status")
+        return
+
     grp = (df.groupby(group_col)["compliance_status"]
              .value_counts().unstack(fill_value=0))
     for s in status_order:
@@ -440,14 +431,13 @@ def fig4_group_stacked(df):
 
     grp["_total"] = grp.sum(axis=1)
     grp["_gap"]   = (grp.get("NON_COMPLIANT", 0) + grp.get("NOMINAL", 0)) / grp["_total"].clip(lower=1) * 100
-    # Keep groups with 3+ sites, top 25 by total, sorted by gap%
-    grp = grp[grp["_total"] >= 3].nlargest(25, "_total")
+    grp = grp[grp["_total"] >= min_total].nlargest(top_n, "_total")
     grp = grp.sort_values("_gap", ascending=True)
     grp = grp.drop(columns=["_total","_gap"])
 
-    # Map country codes to names if using country column
-    if group_col == "country":
-        grp.index = [COUNTRY_NAMES.get(c, c) for c in grp.index]
+    if len(grp) == 0:
+        print(f"  Skipping {filename} — no {group_col} with >= {min_total} sites")
+        return
 
     fig, ax = plt.subplots(figsize=(11, max(6, len(grp) * 0.52 + 2)))
     left = np.zeros(len(grp))
@@ -475,12 +465,85 @@ def fig4_group_stacked(df):
     ax.set_xlabel("Number of sites")
     ax.xaxis.set_major_locator(mticker.MaxNLocator(integer=True))
     ax.set_xlim(0, totals.max() * 1.18)
-    ax.set_title("RQ1 + RQ3 — Compliance by Country (sorted by gap%)")
+    ax.set_title(title)
     ax.legend(loc="lower right", fontsize=9, frameon=False,
               ncol=2, bbox_to_anchor=(1.0, -0.14))
     ax.tick_params(axis="y", labelsize=9)
     ax.grid(axis="x")
-    _save(fig, "fig4_group_stacked.png")
+    _save(fig, filename)
+
+
+def _gap_bar(df, group_col, title, filename, min_total=2, footnote=""):
+    if group_col not in df.columns or "compliance_status" not in df.columns:
+        print(f"  Skipping {filename} — missing {group_col} or compliance_status")
+        return
+
+    grp = df.groupby(group_col)["compliance_status"].value_counts().unstack(fill_value=0)
+    for s in ["COMPLIANT","PARTIAL","NOMINAL","NON_COMPLIANT"]:
+        if s not in grp.columns:
+            grp[s] = 0
+
+    grp["total"]   = grp.sum(axis=1)
+    grp["gap"]     = grp.get("NON_COMPLIANT", 0) + grp.get("NOMINAL", 0)
+    grp["gap_pct"] = grp["gap"] / grp["total"].clip(lower=1) * 100
+    grp["label"]   = grp.index.astype(str)
+    grp = grp[grp["total"] >= min_total].sort_values("gap_pct", ascending=True)
+
+    if len(grp) == 0:
+        print(f"  Skipping {filename} — no {group_col} with >= {min_total} sites")
+        return
+
+    fig, ax = plt.subplots(figsize=(10, max(5, len(grp) * 0.42 + 1.5)))
+
+    bar_colors = ["#D64045" if p >= 50 else "#FB8500" if p >= 25 else "#2DC653"
+                  for p in grp["gap_pct"]]
+
+    bars = ax.barh(grp["label"], grp["gap_pct"],
+                   color=bar_colors, height=0.58,
+                   edgecolor="white", linewidth=0.5, zorder=3)
+
+    for bar, (_, row) in zip(bars, grp.iterrows()):
+        pct = row["gap_pct"]
+        if pct > 8:
+            ax.text(pct - 1.5,
+                    bar.get_y() + bar.get_height() / 2,
+                    f"{pct:.0f}%",
+                    va="center", ha="right", fontsize=8,
+                    fontweight="bold", color="white")
+        ax.text(pct + 0.8,
+                bar.get_y() + bar.get_height() / 2,
+                f"({int(row['gap'])}/{int(row['total'])})",
+                va="center", ha="left", fontsize=8, color="#666666")
+
+    ax.set_xlim(0, 112)
+    ax.set_xlabel("Compliance gap (%)")
+    ax.xaxis.set_major_formatter(mticker.PercentFormatter())
+    ax.set_title(title)
+    ax.tick_params(axis="y", labelsize=9)
+    ax.grid(axis="x", zorder=0)
+
+    patches = [
+        mpatches.Patch(color="#D64045", label="≥ 50% gap"),
+        mpatches.Patch(color="#FB8500", label="25–49% gap"),
+        mpatches.Patch(color="#2DC653", label="< 25% gap"),
+    ]
+    ax.legend(handles=patches, fontsize=9, frameon=False, loc="lower right")
+    if footnote:
+        fig.text(0.12, -0.02, footnote, fontsize=7, color="#AAAAAA")
+    _save(fig, filename)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# FIG 4 — RQ1+RQ3: Stacked Bar by Country
+# ══════════════════════════════════════════════════════════════════════════════
+
+def fig4_country_stacked(df):
+    _stacked_compliance_bar(
+        df, "country",
+        title="RQ1 + RQ3 — Compliance by Country (sorted by gap%, top 25 by volume)",
+        filename="fig4_country_stacked.png",
+        top_n=25, min_total=3,
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -494,27 +557,25 @@ def fig5_conflict_scatter(df):
         return
 
     rng = np.random.default_rng(42)
-    # Increased width slightly to 10 to accommodate the legend on the right
-    fig, ax = plt.subplots(figsize=(10, 6)) 
+    fig, ax = plt.subplots(figsize=(10, 6))
     handles = []
 
     for tier in ["Tier 5", "Tier 4b", "Tier 4a", "Tier 3", "Tier 2", "Tier 1"]:
         sub = df[df["strategy_tier"] == tier].copy()
         if sub.empty:
             continue
-            
+
         jx = rng.uniform(-0.15, 0.15, len(sub))
         jy = rng.uniform(-0.01, 0.01, len(sub))
-        
+
         ax.scatter(sub["conflict_count"] + jx,
                    sub["compliance_score"] + jy,
                    c=TIER_COLORS.get(tier, "#AAAAAA"),
                    s=50, alpha=0.75, edgecolors="white",
                    linewidths=0.4, zorder=3)
-        
+
         handles.append(mpatches.Patch(color=TIER_COLORS.get(tier, "#AAAAAA"), label=tier))
 
-    # Highlight Nominal/Fallacy sites
     nominal = df[df["compliance_status"] == "NOMINAL"] if "compliance_status" in df.columns else pd.DataFrame()
     if not nominal.empty:
         ax.scatter(nominal["conflict_count"],
@@ -525,13 +586,11 @@ def fig5_conflict_scatter(df):
             facecolor="none", edgecolor="#D64045",
             linewidth=1.8, label="Enumeration Fallacy (NOMINAL)"))
 
-    # Threshold line
     max_c = max(df["conflict_count"].max() if not df.empty else 5, 1)
     ax.axhline(0.35, color="#FB8500", linewidth=0.9, linestyle="--", alpha=0.8, zorder=1)
     ax.text(max_c * 0.02, 0.37, "NOMINAL threshold (score < 0.35)",
             fontsize=8, color="#FB8500", va="bottom")
 
-    # Formatting
     ax.set_xlabel("Conflicting directives per site")
     ax.set_ylabel("Compliance score (0.0 – 1.0)")
     ax.set_ylim(-0.08, 1.15)
@@ -539,19 +598,15 @@ def fig5_conflict_scatter(df):
     ax.yaxis.set_major_formatter(mticker.FormatStrFormatter("%.1f"))
     ax.set_title("RQ2 — Directive Conflicts vs Compliance Score\n"
                  "Ringed points = Enumeration Fallacy sites (NOMINAL)")
-    
 
-    ax.legend(handles=handles, 
-              loc="upper left", 
-              bbox_to_anchor=(1.02, 1), 
-              fontsize=9, 
+    ax.legend(handles=handles,
+              loc="upper left",
+              bbox_to_anchor=(1.02, 1),
+              fontsize=9,
               frameon=False)
 
     ax.grid(zorder=0, alpha=0.3)
-    
-    # Use tight_layout or subplots_adjust to make room for the legend
-    plt.tight_layout() 
-    
+    plt.tight_layout()
     _save(fig, "fig5_conflict_scatter.png")
 
 
@@ -604,66 +659,17 @@ def fig6_score_distribution(df):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def fig7_country_gap(df):
-    if "country" not in df.columns or "compliance_status" not in df.columns:
-        print("  Skipping fig7 — missing country or compliance_status")
-        return
-
-    grp = df.groupby("country")["compliance_status"].value_counts().unstack(fill_value=0)
-    for s in ["COMPLIANT","PARTIAL","NOMINAL","NON_COMPLIANT"]:
-        if s not in grp.columns:
-            grp[s] = 0
-
-    grp["total"]   = grp.sum(axis=1)
-    grp["gap"]     = grp.get("NON_COMPLIANT", 0) + grp.get("NOMINAL", 0)
-    grp["gap_pct"] = grp["gap"] / grp["total"].clip(lower=1) * 100
-    grp["cname"]   = grp.index.map(lambda c: COUNTRY_NAMES.get(c, c))
-    grp = grp[grp["total"] >= 2].sort_values("gap_pct", ascending=True)
-
-    fig, ax = plt.subplots(figsize=(10, max(5, len(grp) * 0.42 + 1.5)))
-
-    bar_colors = ["#D64045" if p >= 50 else "#FB8500" if p >= 25 else "#2DC653"
-                  for p in grp["gap_pct"]]
-
-    bars = ax.barh(grp["cname"], grp["gap_pct"],
-                   color=bar_colors, height=0.58,
-                   edgecolor="white", linewidth=0.5, zorder=3)
-
-    for bar, (_, row) in zip(bars, grp.iterrows()):
-        pct = row["gap_pct"]
-        # Label inside bar if wide enough
-        if pct > 8:
-            ax.text(pct - 1.5,
-                    bar.get_y() + bar.get_height() / 2,
-                    f"{pct:.0f}%",
-                    va="center", ha="right", fontsize=8,
-                    fontweight="bold", color="white")
-        ax.text(pct + 0.8,
-                bar.get_y() + bar.get_height() / 2,
-                f"({int(row['gap'])}/{int(row['total'])})",
-                va="center", ha="left", fontsize=8, color="#666666")
-
-    ax.set_xlim(0, 112)
-    ax.set_xlabel("Compliance gap (%)")
-    ax.xaxis.set_major_formatter(mticker.PercentFormatter())
-    ax.set_title("RQ3 — Compliance Gap by Country\n"
-                 "% of sites without effective AI training opt-out")
-    ax.tick_params(axis="y", labelsize=9)
-    ax.grid(axis="x", zorder=0)
-
-    patches = [
-        mpatches.Patch(color="#D64045", label="≥ 50% gap"),
-        mpatches.Patch(color="#FB8500", label="25–49% gap"),
-        mpatches.Patch(color="#2DC653", label="< 25% gap"),
-    ]
-    ax.legend(handles=patches, fontsize=9, frameon=False, loc="lower right")
-    fig.text(0.12, -0.02, "Only countries with 2 or more sites included.",
-             fontsize=7, color="#AAAAAA")
-    _save(fig, "fig7_country_gap.png")
+    _gap_bar(
+        df, "country",
+        title="RQ3 — Compliance Gap by Country\n% of sites without effective AI training opt-out",
+        filename="fig7_country_gap.png",
+        min_total=2,
+        footnote="Only countries with 2 or more sites included.",
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# FIG 8 — NEW: Layer Coverage Heatmap per Country
-# Shows what % of sites in each country have each bot layer effectively blocked
+# FIG 8 — Layer Coverage Heatmap per Country
 # ══════════════════════════════════════════════════════════════════════════════
 
 def fig8_layer_heatmap(df):
@@ -677,23 +683,24 @@ def fig8_layer_heatmap(df):
         print("  Skipping fig8 — missing layer columns or country")
         return
 
-    # Compute % effective per country per layer
     grp = df.groupby("country")[layer_cols].apply(
         lambda x: x.mean() * 100
     ).reset_index()
     grp["total"] = df.groupby("country").size().values
     grp = grp[grp["total"] >= 2]
+    # Cap to top 30 countries by volume so the heatmap stays readable with
+    # a 166-country dataset.
+    grp = grp.nlargest(30, "total")
 
     if grp.empty:
         print("  Skipping fig8 — not enough data")
         return
 
-    grp["cname"] = grp["country"].map(lambda c: COUNTRY_NAMES.get(c, c))
     grp = grp.sort_values(layer_cols[0], ascending=False)
 
-    matrix = grp[layer_cols].values.T   # shape: (3, n_countries)
+    matrix = grp[layer_cols].values.T
     ylbls  = [layers[c] for c in layer_cols]
-    xlbls  = grp["cname"].tolist()
+    xlbls  = grp["country"].tolist()
 
     fig, ax = plt.subplots(figsize=(max(10, len(xlbls) * 0.55 + 2), 3.5))
     im = ax.imshow(matrix, aspect="auto", cmap="RdYlGn",
@@ -704,7 +711,6 @@ def fig8_layer_heatmap(df):
     ax.set_yticks(range(len(ylbls)))
     ax.set_yticklabels(ylbls, fontsize=9)
 
-    # Annotate each cell
     for i in range(matrix.shape[0]):
         for j in range(matrix.shape[1]):
             val = matrix[i, j]
@@ -717,7 +723,7 @@ def fig8_layer_heatmap(df):
     cbar.ax.tick_params(labelsize=8)
     cbar.set_label("% sites with layer effectively blocked", fontsize=8)
 
-    ax.set_title("RQ3 — Bot Layer Coverage by Country\n"
+    ax.set_title("RQ3 — Bot Layer Coverage by Country (top 30 by volume)\n"
                  "Green = most sites block this layer  ·  Red = most do not")
     fig.text(0.12, -0.04,
              "Each cell = % of that country's sites that effectively block that bot layer.",
@@ -725,6 +731,33 @@ def fig8_layer_heatmap(df):
 
     plt.tight_layout()
     _save(fig, "fig8_layer_heatmap.png")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# FIG 9 — NEW: Stacked Bar by Group (topic category)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def fig9_group_stacked(df):
+    _stacked_compliance_bar(
+        df, "group",
+        title="RQ1 + RQ3 — Compliance by Group / Topic Category (sorted by gap%)",
+        filename="fig9_group_stacked.png",
+        top_n=25, min_total=3,
+    )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# FIG 10 — NEW: Compliance Gap by Group (topic category)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def fig10_group_gap(df):
+    _gap_bar(
+        df, "group",
+        title="RQ3 — Compliance Gap by Group / Topic Category\n% of sites without effective AI training opt-out",
+        filename="fig10_group_gap.png",
+        min_total=2,
+        footnote="Only groups with 2 or more sites included.",
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -738,16 +771,16 @@ def generate_html_dashboard(df: pd.DataFrame, metrics: dict):
     """
     valid = df[df["strategy"] != "ERROR"].copy() if "strategy" in df.columns else df.copy()
 
-    # Serialise the data the JS needs
     records = []
     for _, row in valid.iterrows():
         records.append({
-            "tier":    row.get("strategy_tier", "Tier 1"),
-            "comp":    row.get("compliance_status", "NON_COMPLIANT"),
-            "country": row.get("country", "??"),
-            "score":   float(row.get("compliance_score") or 0),
+            "tier":      row.get("strategy_tier", "Tier 1"),
+            "comp":      row.get("compliance_status", "NON_COMPLIANT"),
+            "country":   row.get("country", "Unknown"),
+            "group":     row.get("group", "Unknown"),
+            "score":     float(row.get("compliance_score") or 0),
             "conflicts": int(row.get("conflict_count") or 0),
-            "intended":  bool(row.get("intended_optout", False)),
+            "intended":  bool(row.get("has_optout_signal", False)),
             "effective": bool(row.get("effective_optout", False)),
             "gap":       bool(row.get("gap_identified", False)),
         })
@@ -755,7 +788,7 @@ def generate_html_dashboard(df: pd.DataFrame, metrics: dict):
     data_json    = json.dumps(records)
     metrics_json = json.dumps({
         k: v for k, v in metrics.items()
-        if k not in ("by_country", "by_tier")
+        if k not in ("by_country", "by_group", "by_tier")
     }, default=str)
 
     html = f"""<!DOCTYPE html>
@@ -795,12 +828,13 @@ footer{{padding:12px 20px;font-size:10px;color:#bbb;border-top:1px solid #eee;ma
 <div class="kpis">
   <div class="kpi"><div class="kpi-label">Total sites</div><div class="kpi-val" id="k-total">—</div><div class="kpi-sub" id="k-valid"></div></div>
   <div class="kpi"><div class="kpi-label">Compliance gap</div><div class="kpi-val" style="color:#D64045" id="k-gap">—</div><div class="kpi-sub">no effective opt-out</div></div>
-  <div class="kpi"><div class="kpi-label">Enumeration fallacy</div><div class="kpi-val" style="color:#FFBE0B" id="k-ef">—</div><div class="kpi-sub">intended ≠ effective</div></div>
+  <div class="kpi"><div class="kpi-label">Enumeration fallacy</div><div class="kpi-val" style="color:#FFBE0B" id="k-ef">—</div><div class="kpi-sub">signal present ≠ effective</div></div>
   <div class="kpi"><div class="kpi-label">Fully compliant</div><div class="kpi-val" style="color:#2DC653" id="k-comp">—</div><div class="kpi-sub">all layers blocked</div></div>
 </div>
 
 <div class="filters">
   <label>Country</label><select id="f-cc"><option value="">All</option></select>
+  <label>Group</label><select id="f-group"><option value="">All</option></select>
   <label>Tier</label><select id="f-tier"><option value="">All</option></select>
   <label>Compliance</label><select id="f-comp"><option value="">All</option></select>
   <span style="margin-left:8px;font-size:10px;color:#aaa" id="f-count"></span>
@@ -811,24 +845,26 @@ footer{{padding:12px 20px;font-size:10px;color:#bbb;border-top:1px solid #eee;ma
   <div class="chart-card"><div class="chart-title">RQ3 — compliance status</div><div class="leg" id="leg-comp"></div><div style="position:relative;height:188px"><canvas id="c-comp"></canvas></div></div>
 </div>
 <div class="grid2">
-  <div class="chart-card"><div class="chart-title">RQ3 — intended vs effective opt-out</div><div style="position:relative;height:200px"><canvas id="c-optout"></canvas></div></div>
+  <div class="chart-card"><div class="chart-title">RQ3 — opt-out signal vs effective</div><div style="position:relative;height:200px"><canvas id="c-optout"></canvas></div></div>
   <div class="chart-card"><div class="chart-title">RQ2 — conflict severity</div><div style="position:relative;height:200px"><canvas id="c-conflict"></canvas></div></div>
 </div>
 <div class="grid1">
   <div class="chart-card"><div class="chart-title">RQ3 — compliance gap by country (% without effective opt-out)</div><div id="c-cc-wrap" style="position:relative"><canvas id="c-cc"></canvas></div></div>
+</div>
+<div class="grid1">
+  <div class="chart-card"><div class="chart-title">RQ3 — compliance gap by group / topic category (% without effective opt-out)</div><div id="c-group-wrap" style="position:relative"><canvas id="c-group"></canvas></div></div>
 </div>
 <div class="grid2" style="padding-bottom:16px">
   <div class="chart-card"><div class="chart-title">RQ1+RQ3 — compliance score distribution</div><div style="position:relative;height:200px"><canvas id="c-score"></canvas></div></div>
   <div class="chart-card"><div class="chart-title">RQ2 — conflicts vs compliance score</div><div style="position:relative;height:200px"><canvas id="c-scatter"></canvas></div></div>
 </div>
 
-<footer>SCA v1.0 · Semantic Configuration Analyzer · 2DV50E Linnaeus University VT 2026 · Data source: GDELT geographic source lookup</footer>
+<footer>SCA v1.0 · Semantic Configuration Analyzer · 2DV50E Linnaeus University VT 2026 · Data source: robots_data_fixed.csv</footer>
 
 <script>
 const TIER_C  ={{"Tier 5":"#D64045","Tier 4b":"#3A86FF","Tier 4a":"#7B2D8B","Tier 3":"#2DC653","Tier 2":"#FB8500","Tier 1":"#AAAAAA"}};
 const COMP_C  ={{"COMPLIANT":"#2DC653","PARTIAL":"#FB8500","NOMINAL":"#FFBE0B","NON_COMPLIANT":"#D64045"}};
 const COMP_LBL={{"COMPLIANT":"Compliant","PARTIAL":"Partial","NOMINAL":"Nominal (EF)","NON_COMPLIANT":"Non-compliant"}};
-const CC_NAME ={{"SE":"Sweden","NO":"Norway","DK":"Denmark","FI":"Finland","GB":"UK","IE":"Ireland","DE":"Germany","AT":"Austria","CH":"Switzerland","FR":"France","NL":"Netherlands","BE":"Belgium","ES":"Spain","PT":"Portugal","IT":"Italy","GR":"Greece","PL":"Poland","CZ":"Czechia","SK":"Slovakia","HU":"Hungary","RO":"Romania","BG":"Bulgaria","HR":"Croatia","SI":"Slovenia","EE":"Estonia","LV":"Latvia","LT":"Lithuania","LU":"Luxembourg","MT":"Malta","CY":"Cyprus"}};
 
 const ALL = {data_json};
 let FILTERED = ALL;
@@ -867,7 +903,7 @@ function compChart(d){{
 function optoutChart(d){{
   const n=Math.max(d.length,1);
   ch('c-optout','bar',
-    {{labels:['Intended opt-out','Effective opt-out'],datasets:[{{data:[Math.round(d.filter(r=>r.intended).length/n*100),Math.round(d.filter(r=>r.effective).length/n*100)],backgroundColor:['#3A86FF','#2DC653'],borderRadius:4,borderWidth:0}}]}},
+    {{labels:['Has opt-out signal','Effective opt-out'],datasets:[{{data:[Math.round(d.filter(r=>r.intended).length/n*100),Math.round(d.filter(r=>r.effective).length/n*100)],backgroundColor:['#3A86FF','#2DC653'],borderRadius:4,borderWidth:0}}]}},
     {{scales:{{y:{{max:100,ticks:{{callback:v=>v+'%',color:'#999',font:{{size:10}}}},grid:{{color:'#eee'}}}},x:{{ticks:{{color:'#444',font:{{size:10}}}},grid:{{display:false}}}}}}}});
 }}
 
@@ -878,16 +914,19 @@ function conflictChart(d){{
     {{scales:{{y:{{ticks:{{color:'#999',font:{{size:10}}}},grid:{{color:'#eee'}}}},x:{{ticks:{{color:'#444',font:{{size:10}}}},grid:{{display:false}}}}}}}});
 }}
 
-function countryChart(d){{
+function buildGapChart(canvasId, wrapId, d, key, minTotal){{
   const cc={{}};
-  d.forEach(r=>{{if(!cc[r.country])cc[r.country]={{t:0,g:0}};cc[r.country].t++;if(r.comp==="NON_COMPLIANT"||r.comp==="NOMINAL")cc[r.country].g++;}});
-  const entries=Object.entries(cc).filter(([,v])=>v.t>=2).map(([k,v])=>{{const p=Math.round(v.g/v.t*100);return{{k:CC_NAME[k]||k,p,n:v.t}}}}).sort((a,b)=>b.p-a.p);
-  const h=Math.max(160,entries.length*28+50);
-  $('c-cc-wrap').style.height=h+'px';
-  ch('c-cc','bar',
+  d.forEach(r=>{{const k=r[key]||'Unknown';if(!cc[k])cc[k]={{t:0,g:0}};cc[k].t++;if(r.comp==="NON_COMPLIANT"||r.comp==="NOMINAL")cc[k].g++;}});
+  const entries=Object.entries(cc).filter(([,v])=>v.t>=minTotal).map(([k,v])=>{{const p=Math.round(v.g/v.t*100);return{{k,p,n:v.t}}}}).sort((a,b)=>b.p-a.p).slice(0,30);
+  const h=Math.max(160,entries.length*26+50);
+  $(wrapId).style.height=h+'px';
+  ch(canvasId,'bar',
     {{labels:entries.map(e=>e.k),datasets:[{{data:entries.map(e=>e.p),backgroundColor:entries.map(e=>e.p>=50?'#D64045':e.p>=25?'#FB8500':'#2DC653'),borderRadius:3,borderWidth:0}}]}},
     {{indexAxis:'y',scales:{{x:{{max:100,ticks:{{callback:v=>v+'%',color:'#999',font:{{size:9}}}},grid:{{color:'#eee'}}}},y:{{ticks:{{color:'#444',font:{{size:9}}}},grid:{{display:false}}}}}}}});
 }}
+
+function countryChart(d){{buildGapChart('c-cc','c-cc-wrap',d,'country',2)}}
+function groupChart(d){{buildGapChart('c-group','c-group-wrap',d,'group',2)}}
 
 function scoreChart(d){{
   ch('c-score','bar',
@@ -904,23 +943,25 @@ function scatterChart(d){{
 
 function populate(){{
   const ccs=[...new Set(ALL.map(d=>d.country))].sort();
-  ccs.forEach(c=>{{const o=document.createElement('option');o.value=c;o.textContent=(CC_NAME[c]||c)+' ('+c+')';$('f-cc').appendChild(o)}});
+  ccs.forEach(c=>{{const o=document.createElement('option');o.value=c;o.textContent=c;$('f-cc').appendChild(o)}});
+  const groups=[...new Set(ALL.map(d=>d.group))].sort();
+  groups.forEach(g=>{{const o=document.createElement('option');o.value=g;o.textContent=g;$('f-group').appendChild(o)}});
   ["Tier 5","Tier 4b","Tier 4a","Tier 3","Tier 2","Tier 1"].forEach(t=>{{const o=document.createElement('option');o.value=t;o.textContent=t;$('f-tier').appendChild(o)}});
   ["COMPLIANT","PARTIAL","NOMINAL","NON_COMPLIANT"].forEach(s=>{{const o=document.createElement('option');o.value=s;o.textContent=COMP_LBL[s];$('f-comp').appendChild(o)}});
 }}
 
 function filter(){{
-  const cc=$('f-cc').value,tt=$('f-tier').value,cs=$('f-comp').value;
-  FILTERED=ALL.filter(d=>(!cc||d.country===cc)&&(!tt||d.tier===tt)&&(!cs||d.comp===cs));
+  const cc=$('f-cc').value,gg=$('f-group').value,tt=$('f-tier').value,cs=$('f-comp').value;
+  FILTERED=ALL.filter(d=>(!cc||d.country===cc)&&(!gg||d.group===gg)&&(!tt||d.tier===tt)&&(!cs||d.comp===cs));
   render();
 }}
 
 function render(){{
   kpis(FILTERED);tierChart(FILTERED);compChart(FILTERED);optoutChart(FILTERED);
-  conflictChart(FILTERED);countryChart(FILTERED);scoreChart(FILTERED);scatterChart(FILTERED);
+  conflictChart(FILTERED);countryChart(FILTERED);groupChart(FILTERED);scoreChart(FILTERED);scatterChart(FILTERED);
 }}
 
-['f-cc','f-tier','f-comp'].forEach(id=>$(id).addEventListener('change',filter));
+['f-cc','f-group','f-tier','f-comp'].forEach(id=>$(id).addEventListener('change',filter));
 populate();
 render();
 </script>
@@ -948,43 +989,20 @@ def _save(fig, filename: str):
 # STANDALONE ENTRY POINT
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _standalone_pipeline():
-    from src.model import data as data_model
-    from src.model import compliance as comp_model
-    from src.control import pipeline
-
-    logging.basicConfig(level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s")
-    log = logging.getLogger(__name__)
-
-    sites = data_model.load_target_sites(log, "targets.json")
-    if not sites:
-        print("ERROR: targets.json not found or empty.")
-        sys.exit(1)
-
-    results = pipeline.run_pipeline(sites, log, rate_limit_delay=0.5)
-    metrics = comp_model.compute_gap_metrics(results)
-    run_from_results(results, metrics)
-
-
 def main():
     parser = argparse.ArgumentParser(
         description="Generate thesis figures from SCA pipeline results."
     )
-    parser.add_argument("--csv", metavar="PATH",
-        help="Load from existing CSV instead of running the pipeline.")
+    parser.add_argument("--csv", metavar="PATH", required=True,
+        help="Load from an existing results CSV (e.g. log/raw_results.csv).")
     args = parser.parse_args()
 
     print("\n" + "=" * 60)
     print("  SCA Visualizer — Thesis 2DV50E")
     print("=" * 60)
 
-    if args.csv:
-        print(f"\n  Loading from {args.csv} ...")
-        run_from_csv(args.csv)
-    else:
-        print("\n  Running SCA pipeline ...")
-        _standalone_pipeline()
+    print(f"\n  Loading from {args.csv} ...")
+    run_from_csv(args.csv)
 
     print("\n" + "=" * 60)
     print(f"  Done.  {TIMESTAMP}")
