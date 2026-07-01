@@ -1,15 +1,6 @@
 """
 classifier.py — Semantic Configuration Analyzer (SCA) — RQ1
 
-Implements section-based semantic parsing of robots.txt files and
-classifies configurations into six Defense Tiers.
-
-RFC 9309 key rules implemented here:
-  1. A named bot section REPLACES the wildcard entirely for that bot.
-     The wildcard is not consulted at all if a named section exists.
-  2. Among matching rules, the LONGEST (most specific) path wins.
-  3. Ties in path length → Allow wins.
-  4. Sitemap:, Host:, crawl-delay: do NOT reset parser state.
 """
 
 import logging
@@ -65,11 +56,6 @@ BOTS = {
 }
 
 # Known non-directive lines that must NOT reset parser state per RFC 9309.
-# The original code reset on any unrecognised line, which incorrectly treated
-# Sitemap: as a group-terminator, breaking configs like:
-#   User-agent: GPTBot
-#   Sitemap: https://example.com/sitemap.xml   ← was wrongly resetting state
-#   Disallow: /                                 ← was then orphaned
 _NON_RESETTING_DIRECTIVES = frozenset([
     "sitemap:",
     "host:",
@@ -89,7 +75,7 @@ def _parse_sections(lines):
 
         if line.lower().startswith("user-agent:"):
             if not last_was_agent:
-                current_agents = []          # ← start a new group
+                current_agents = []
             agent = line.split(":", 1)[1].strip().lower()
             current_agents.append(agent)
             sections.setdefault(agent, [])
@@ -112,7 +98,7 @@ def _parse_sections(lines):
 
 def _is_fully_blocked(directives):
     """
-    Evaluates if the root directory is effectively blocked using RFC 9309 
+    Evaluates if the root directory is effectively blocked using RFC 9309
     longest-path specificity rules.
     """
     allow_len = -1
@@ -122,20 +108,16 @@ def _is_fully_blocked(directives):
         d_lower = d.lower()
         if d_lower.startswith("allow:"):
             path = d.split(":", 1)[1].strip()
-            # If path is empty, it's invalid per RFC, ignore.
             if path and (path == "/" or path.startswith("/*")):
                 allow_len = max(allow_len, len(path))
-                
+
         elif d_lower.startswith("disallow:"):
             path = d.split(":", 1)[1].strip()
-            # FIX: Empty disallow means allow all (path length 0). 
-            # Do NOT return False immediately, as a longer rule might override it.
             if not path:
-                allow_len = max(allow_len, 0) 
+                allow_len = max(allow_len, 0)
             elif path == "/" or path.startswith("/*"):
                 disallow_len = max(disallow_len, len(path))
 
-    # If no root disallow exists, it is not blocked.
     if disallow_len == -1:
         return False
 
@@ -151,7 +133,7 @@ def _is_fully_allowed(directives):
     for d in directives:
         if d.startswith("disallow:"):
             val = d.split(":", 1)[1].strip()
-            if not val:  # empty Disallow = allow all
+            if not val:
                 return True
         if d.startswith("allow:"):
             val = d.split(":", 1)[1].strip()
@@ -161,14 +143,6 @@ def _is_fully_allowed(directives):
 
 
 def _detect_wildcard_block(sections):
-    """
-    Returns True only if the wildcard section has Disallow: / with no Allow: /
-    override of equal or greater specificity.
-
-    NOTE: this tells us the wildcard INTENDS to block everything. Whether a
-    specific named bot is actually blocked by the wildcard depends on whether
-    that bot has its own section (see _bot_is_blocked_by_wildcard).
-    """
     wildcard = sections.get("*", [])
     return _is_fully_blocked(wildcard)
 
@@ -176,18 +150,11 @@ def _detect_wildcard_block(sections):
 def _bot_is_blocked_by_wildcard(bot_lower, sections):
     """
     Per RFC 9309, a named bot section REPLACES the wildcard entirely.
-    If the bot has any entry in sections (even an empty one), the wildcard
-    does NOT apply to it.
-
-    Returns True only if:
-      - The wildcard has Disallow: / (no Allow: / override), AND
-      - The bot has NO named section of its own.
+    Returns True only if the wildcard has Disallow: / AND the bot has
+    no named section of its own.
     """
     if bot_lower in sections:
-        # Named section exists — wildcard is irrelevant for this bot.
-        # The bot's own section governs entirely.
         return False
-    # No named section — wildcard applies
     wildcard = sections.get("*", [])
     return _is_fully_blocked(wildcard)
 
@@ -196,8 +163,6 @@ def _detect_google_exception(sections):
     """True if Googlebot has its own section that fully allows access."""
     googlebot = sections.get("googlebot", [])
     if not googlebot:
-        # No named Googlebot section. If there's a wildcard block,
-        # Googlebot is also blocked (no exception).
         return False
     return _is_fully_allowed(googlebot)
 
@@ -212,7 +177,6 @@ def _detect_google_ai_block(sections):
         directives = sections.get(bot_lower, [])
         if directives and _is_fully_blocked(directives):
             return True
-        # Also covered if wildcard blocks and no named section overrides
         if _bot_is_blocked_by_wildcard(bot_lower, sections):
             return True
     return False
@@ -220,27 +184,32 @@ def _detect_google_ai_block(sections):
 
 def _detect_layer_blocks(sections):
     """
-    For each layer, a bot is considered blocked if:
-      (a) it has a named section with Disallow: / (with no Allow: / tie), OR
-      (b) it has no named section AND the wildcard has Disallow: /
+    For each layer, returns True only if EVERY bot in that layer is
+    effectively blocked — either by its own named section or by the wildcard
+    (where no named section exists to override it per RFC 9309).
 
-    Returns True for a layer if ANY bot in that layer is effectively blocked.
-    This is the "any_blocked" logic used in tier classification.
+
     """
-    def any_blocked(bot_list):
+    def all_blocked(bot_list):
+        if not bot_list:
+            # Empty list — vacuously true is misleading here; treat as False
+            # so an empty layer never accidentally qualifies a tier.
+            return False
         for bot in bot_list:
             bot_lower = bot.lower()
             directives = sections.get(bot_lower, [])
             if directives and _is_fully_blocked(directives):
-                return True
+                continue   # this bot is covered by its own named section
             if _bot_is_blocked_by_wildcard(bot_lower, sections):
-                return True
-        return False
+                continue   # this bot is covered by the wildcard
+            # This bot is not blocked — the whole layer is not fully covered
+            return False
+        return True        # every bot in the layer is blocked
 
     return {
-        "app_layer":   any_blocked(BOTS["APP_LAYER"]),
-        "infra_layer": any_blocked(BOTS["INFRA_LAYER"]),
-        "google_ai":   any_blocked(BOTS["GOOGLE_AI"]),
+        "app_layer":   all_blocked(BOTS["APP_LAYER"]),
+        "infra_layer": all_blocked(BOTS["INFRA_LAYER"]),
+        "google_ai":   all_blocked(BOTS["GOOGLE_AI"]),
     }
 
 
@@ -289,19 +258,20 @@ def classify(content, ext_logger=None):
 
     if layers["app_layer"] and layers["infra_layer"]:
         return _result("Tier 3", "Surgical",
-                       "Explicitly blocks both APP-layer AI bots (GPTBot, ClaudeBot) "
-                       "and INFRA-layer bots (CCBot, FacebookBot). Targeted and effective.",
+                       "Explicitly blocks ALL bots in both APP-layer (GPTBot, ClaudeBot…) "
+                       "and INFRA-layer (CCBot, FacebookBot…). Every known bot in both "
+                       "layers is covered. Targeted and effective.",
                        signals)
 
     if layers["app_layer"] and not layers["infra_layer"]:
         return _result("Tier 2", "Porous",
-                       "Blocks visible AI bots (APP layer) but misses training "
-                       "infrastructure bots (INFRA layer). Performative defence.",
+                       "Blocks ALL bots in the APP layer but every INFRA-layer bot "
+                       "(CCBot, Bytespider…) still has full access. Performative defence.",
                        signals)
 
     return _result("Tier 1", "Open",
-                   "No AI-specific blocking detected. Fully accessible to all "
-                   "AI crawlers and training data collectors.",
+                   "No complete AI-layer blocking detected. At least one bot in every "
+                   "layer has full access. Fully accessible to AI training data collectors.",
                    signals)
 
 
