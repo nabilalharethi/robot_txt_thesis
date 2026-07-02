@@ -1,59 +1,26 @@
 """
-Semantic Configuration Analyzer (SCA) — Entry Point
-
-RQ1: Semantic classification of robots.txt configurations
-RQ2: Conflicting directives detection
-RQ3: EU AI Act compliance gap measurement
+main.py — Entry point for the SCA pipeline, sourcing sites from
+robots_data_fixed.csv (full dataset, no sampling — all 263k+ rows).
 """
 
 import logging
 import sys
 import pandas as pd
-from datetime import datetime
 from pathlib import Path
+from datetime import datetime
 
-from src.model import data
+from src.control import pipeline as app
+from src.model.csv_site_loader import load_from_robots_csv
 from src.model import compliance as comp_model
 from src.view import cmd_view as view
-from src.view import vizualization
-from src.control import pipeline
-from src.model.gdelt_loader import load_from_gdelt_csv
-
-# ── Config ────────────────────────────────────────────────────────────────────
-
-VERSION      = "1.0"
-GDELT_CSV    = "data/gdelt_sources.csv"   # downloaded once from GDELT
-TARGETS_FILE = "targets.json"             # fallback if CSV missing
-OUTPUT_CSV   = "log/raw_results.csv"
-RATE_LIMIT   = 0.5
-
-# Which European countries to include (ISO codes). None = all ~32 European.
-COUNTRIES = [
-    "SE", "NO", "DK", "FI",
-    "GB", "IE",
-    "DE", "AT", "CH",
-    "FR", "BE", "NL",
-    "ES", "PT", "IT",
-    "PL", "CZ", "HU", "SK",
-    "RO", "BG", "HR", "SI",
-    "EE", "LV", "LT",
-]
-
-# Minimum GDELT mention count — filters out very obscure/defunct domains.
-# 10  = broad (thousands of sites per country)
-# 100 = medium (established outlets only)
-# 500 = narrow (major outlets only)
-MIN_CNT = 50
-
-# Cap per country. None = no cap.
-MAX_PER_COUNTRY = 40
-
-LOG_DIR  = Path("log")
-LOG_FILE = LOG_DIR / f"analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+from src.view import visualize
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 
+LOG_DIR = Path("log")
 LOG_DIR.mkdir(parents=True, exist_ok=True)
+LOG_FILE = LOG_DIR / f"analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s — %(levelname)s — %(name)s — %(message)s",
@@ -64,37 +31,33 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+CSV_PATH = "data/robots_data_fixed.csv"
+OUTPUT_CSV = "log/raw_results.csv"
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# Tune based on how your network / targets tolerate concurrency.
+#MAX_WORKERS = 20
+PER_WORKER_DELAY = 0.5
+
 
 def main():
-    logger.info("=" * 60)
-    logger.info(f"Semantic Configuration Analyzer v{VERSION}")
-    logger.info("=" * 60)
+    sites = load_from_robots_csv(CSV_PATH, log=logger)
 
-    # Step 1: Load sites — GDELT CSV first, JSON fallback
-    sites = load_from_gdelt_csv(
-        GDELT_CSV,
-        log=logger,
-        countries=COUNTRIES,
-        min_cnt=MIN_CNT,
-        max_per_country=MAX_PER_COUNTRY,
-    )
+    # Temporary test
+    sites = load_from_robots_csv(CSV_PATH, log=logger)
 
     if not sites:
-        logger.warning(f"GDELT CSV not found or empty — falling back to {TARGETS_FILE}")
-        sites = data.load_target_sites(logger, TARGETS_FILE)
-
-    if not sites:
-        logger.error("No valid sites loaded from any source — exiting")
+        logger.error(f"No valid sites loaded from {CSV_PATH} — exiting")
+        print(f"\n Error: no valid sites loaded from {CSV_PATH}")
         sys.exit(1)
 
-    logger.info(f"Loaded {len(sites)} sites total")
+    logger.info(f"Loaded {len(sites)} sites total — running full dataset, no sampling")
+    results = app.run_pipeline(
+        sites,
+        logger,
+        rate_limit_delay=PER_WORKER_DELAY,
+    )
 
-    # Step 2: Run pipeline
-    results = pipeline.run_pipeline(sites, logger, RATE_LIMIT)
-
-    # Step 3: Export CSV
+    # Export raw results CSV
     Path(OUTPUT_CSV).parent.mkdir(parents=True, exist_ok=True)
     df = pd.DataFrame(results)
     csv_cols = [c for c in df.columns if c not in ("compliance", "signals")]
@@ -103,30 +66,33 @@ def main():
     print(f"\n  Results : {OUTPUT_CSV}")
     print(f"  Log     : {LOG_FILE}")
 
-    # Step 4: Compliance gap metrics
+    # Compliance gap metrics (now includes by_group alongside by_country)
     metrics = comp_model.compute_gap_metrics(results)
 
-    # Step 5: Display summaries
+    # Summaries
     view.print_summary_statistics(df)
     view.print_compliance_report(metrics)
 
-    # Step 6: Generate figures
+    # Figures (country-name based + new group analysis figures)
     print("\n" + "=" * 60)
     print("  Generating thesis figures ...")
     print("=" * 60)
-    vizualization.run_from_results(results, metrics)
+    visualize.run_from_results(results, metrics)
     print("\n  Figures  -> figures/")
     print("  Results  -> results/")
     logger.info("Pipeline completed successfully")
     print("\n  Done.\n")
+
+    return results
 
 
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\n  Interrupted.")
-        sys.exit(0)
+        logger.warning("Analysis interrupted by user (Ctrl+C)")
+        print("\n Analysis interrupted by user")
     except Exception as e:
-        logger.exception(f"Unexpected error: {e}")
-        sys.exit(1)
+        logger.exception("Unexpected error in main pipeline")
+        print(f"\n Unexpected error: {e}")
+        raise
